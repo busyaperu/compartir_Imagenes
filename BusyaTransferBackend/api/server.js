@@ -71,10 +71,6 @@ app.post("/process-image", async (req, res) => {
     }
 });
 
-// Iniciar el servidor
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
-
 // Exportar la aplicación para que Vercel la reconozca
 module.exports = app;
 
