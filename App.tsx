@@ -1,129 +1,73 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
-import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
-import { createClient } from '@supabase/supabase-js';
-import axios from 'axios';
+import React, { useEffect } from "react";
+import { View, Text, Image, Alert, Button } from "react-native";
+import ShareMenu from "react-native-share-menu";
+import { createClient } from "@supabase/supabase-js";
 
-// Configuración de Supabase
-const supabaseUrl = '..........................'; // Reemplaza con tu URL de Supabase
-const supabaseAnonKey = '.......................'; // Reemplaza con tu clave Anon
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseUrl = "https://uygczevnxayqgfaiuyuy.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5Z2N6ZXZueGF5cWdmYWl1eXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDA5OTkwNDksImV4cCI6MjAxNjU3NTA0OX0.hgb12daiZVI3p6d8xAY-jyYwY3VmSQNp9nGeS0cymRo";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Configuración de OpenAI
-const openAiApiKey = '...........................'; // Reemplaza con tu clave API de OpenAI
-const openAiEndpoint = '.............................'; // Modifica según el servicio de OpenAI
+export default function App() {
+  const handleShared = async (sharedData: any) => {
+    if (!sharedData) return;
 
-const App: React.FC = () => {
-  const [sharedImage, setSharedImage] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+    const { mimeType, data, app } = sharedData;
+
+    // Verificar que provenga de Yape o Plin
+    const allowedApps = [
+      "com.bcp.innovacxion.yapeapp", // Yape
+      "com.bbva.pe.bbvacontigo",    // BBVA con Plin
+      "com.interbank.mobilebanking", // Interbank con Plin
+      "pe.scotiabank.banking",       // Scotiabank con Plin
+      "pe.bn.movil",                 // Banco de la Nación
+      "com.banbif.mobilebanking"     // BanBIF
+    ];
+
+    if (!allowedApps.includes(app)) {
+      Alert.alert("Error", "Solo puedes compartir imágenes desde Yape o Plin.");
+      return;
+    }
+
+    // Validar tipo de archivo
+    if (!mimeType.startsWith("image/")) {
+      Alert.alert("Error", "Por favor comparte una imagen.");
+      return;
+    }
+
+    try {
+      // Enviar la imagen al backend para procesarla con ChatGPT
+      const response = await fetch("http://localhost:3000/process-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: data }),
+      });
+      const extractedData = await response.json();
+
+      // Extraer datos y enviarlos a Supabase
+      const { monto, nombre, email, telefono, banco } = extractedData;
+      const { error } = await supabase.from("acreditar").insert([
+        { monto, nombre, email, telefono, banco },
+      ]);
+
+      if (error) throw error;
+
+      Alert.alert("Éxito", "Datos enviados correctamente a Supabase.");
+    } catch (error) {
+      Alert.alert("Error", (error as Error).message);
+
+    }
+  };
 
   useEffect(() => {
-    // Escuchar contenido compartido
-    ReceiveSharingIntent.getReceivedFiles(
-      (files: any[]) => {
-        if (files.length > 0) {
-          const filePath = files[0].filePath;
-          setSharedImage(filePath); // Muestra la imagen compartida
-          uploadToSupabase(filePath); // Sube la imagen a Supabase
-        }
-      },
-      (error: any) => {
-        console.error('Error al recibir contenido compartido:', error);
-      },
-      'RNSharingGroup'
-    );
-
-    return () => {
-      ReceiveSharingIntent.clearReceivedFiles();
-    };
+    const unsubscribe = ShareMenu.addListener(handleShared);
+    return () => unsubscribe.remove();
   }, []);
 
-  const uploadToSupabase = async (filePath: string) => {
-    try {
-      const response = await fetch(filePath);
-      const blob = await response.blob();
-      const fileName = filePath.split('/').pop();
-
-      // Subir imagen a Supabase
-      const { data, error } = await supabase.storage
-        .from('imagenes') // Bucket de Supabase
-        .upload(`compartidas/${fileName}`, blob);
-
-      if (error) {
-        console.error('Error al subir la imagen:', error.message);
-        setUploadStatus('Error al subir la imagen.');
-      } else {
-        console.log('Imagen subida correctamente:', data);
-        setUploadStatus('Imagen subida correctamente a Supabase.');
-
-        // Procesar imagen con OpenAI
-        const imageUrl = `${supabaseUrl}/storage/v1/object/public/imagenes/${data.path}`;
-        processImageWithOpenAI(imageUrl);
-      }
-    } catch (error) {
-      console.error('Error al subir a Supabase:', error);
-      setUploadStatus('Error inesperado al subir la imagen.');
-    }
-  };
-
-  const processImageWithOpenAI = async (imageUrl: string) => {
-    try {
-      const response = await axios.post(
-        openAiEndpoint,
-        {
-          image_url: imageUrl,
-          model: 'gpt-4', // GPT-4 Modifica según el modelo que uses
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${openAiApiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        console.log('Imagen procesada con éxito:', response.data);
-        setUploadStatus('Imagen procesada correctamente con OpenAI.');
-      } else {
-        console.error('Error al procesar la imagen:', response.data);
-        setUploadStatus('Error al procesar la imagen con GPT-4.');
-      }
-    } catch (error) {
-      console.error('Error de conexión con OpenAI:', error);
-      setUploadStatus('Error al conectar con GPT-4.');
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Imagen Compartida</Text>
-      {sharedImage ? (
-        <Image source={{ uri: sharedImage }} style={styles.image} />
-      ) : (
-        <Text>No se ha compartido ninguna imagen.</Text>
-      )}
-      {uploadStatus && <Text>{uploadStatus}</Text>}
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      {/* Asegúrate de tener la carpeta `assets/images` con el logo `logo1.png` */}
+      <Image source={require("./assets/images/logo1.png")} style={{ width: 100, height: 100 }} />
+      <Text style={{ marginTop: 20 }}>BusyaTransfer</Text>
     </View>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
-  image: {
-    width: 300,
-    height: 300,
-    resizeMode: 'contain',
-  },
-});
-
-export default App;
+}

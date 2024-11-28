@@ -5,9 +5,9 @@ const { OpenAI } = require("openai");
 const app = express();
 app.use(bodyParser.json());
 
-// Configuración de OpenAI
+// Configuración de OpenAI utilizando la variable de entorno
 const openai = new OpenAI({
-    apiKey: "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", // Reemplaza con tu clave API de OpenAI
+    apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
 });
 
 // IDs permitidos para las aplicaciones de Yape, Plin y bancos
@@ -74,3 +74,4 @@ app.post("/process-image", async (req, res) => {
 // Iniciar el servidor
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
