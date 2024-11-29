@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
+const Tesseract = require("tesseract.js");
 
 const app = express();
 app.use(bodyParser.json());
@@ -28,46 +29,57 @@ app.post("/process-image", async (req, res) => {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
-  const prompt = `
-    A continuación, recibirás información de una constancia de transferencia.
-    Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
-    - "amount" (puede aparecer como Pago exitoso, Te Yapearon).
-    - "nombre" (puede aparecer como nombre, Enviado a).
-    - "email" (puede aparecer como correo, email).
-    - "telefono" (puede aparecer como teléfono, celular).
-    - "medio_pago" (puede aparecer como Destino).
-    - "fecha" (puede aparecer como Fecha y hora).
-    - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
-    URL de la constancia: ${imageUrl}
-  `;
+  // Utilizando Tesseract para realizar OCR sobre la imagen
+  Tesseract.recognize(
+    imageUrl,
+    'spa', // Asumiendo español, ajusta según necesidad
+    { logger: m => console.log(m) }
+  ).then(async ({ data: { text } }) => {
+    console.log("Texto extraído:", text);
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }]
-    });
-
-    console.log("Respuesta cruda de OpenAI:", response.choices[0].message.content); // Log the raw response
-
-    const rawContent = response.choices[0].message.content.trim();
-    let extractedData;
+    // Usar OpenAI para estructurar los datos extraídos
+    const prompt = `
+      A continuación, recibirás información de una constancia de transferencia.
+      Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
+      - "amount" (puede aparecer como Pago exitoso, Te Yapearon).
+      - "nombre" (puede aparecer como nombre, Enviado a).
+      - "email" (puede aparecer como correo, email).
+      - "telefono" (puede aparecer como teléfono, celular).
+      - "medio_pago" (puede aparecer como Destino).
+      - "fecha" (puede aparecer como Fecha y hora).
+      - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
+      Texto de la constancia: ${text}
+    `;
+    
     try {
-      extractedData = JSON.parse(rawContent);
-      const { amount, nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
-      if (!amount || !nombre || !medio_pago || !numero_operacion) {
-        throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
-      }
-      if (!email && !telefono) {
-        throw new Error("Debe incluirse al menos uno: email o teléfono.");
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }]
+      });
+
+      const rawContent = response.choices[0].message.content.trim();
+      let extractedData;
+      try {
+        extractedData = JSON.parse(rawContent);
+        const { amount, nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
+        if (!amount || !nombre || !medio_pago || !numero_operacion) {
+          throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
+        }
+        if (!email && !telefono) {
+          throw new Error("Debe incluirse al menos uno: email o teléfono.");
+        }
+        res.json({ success: true, data: extractedData });
+      } catch (error) {
+        throw new Error("Respuesta de OpenAI no es un JSON válido.");
       }
     } catch (error) {
-      throw new Error("Respuesta de OpenAI no es un JSON válido.");
+      console.error("Error al estructurar los datos con OpenAI:", error);
+      res.status(500).json({ error: "Error al estructurar los datos" });
     }
-    res.json({ success: true, data: extractedData });
-  } catch (error) {
-    console.error("Error al procesar la imagen:", error);
-    res.status(500).json({ error: error.message });
-  }
+  }).catch(error => {
+    console.error("Error al procesar la imagen con OCR:", error);
+    res.status(500).json({ error: "Error al procesar la imagen con OCR" });
+  });
 });
 
 const PORT = process.env.PORT || 3000;
