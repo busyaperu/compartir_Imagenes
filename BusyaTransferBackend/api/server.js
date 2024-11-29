@@ -37,10 +37,26 @@ app.post("/process-image", async (req, res) => {
   // Utilizando Tesseract para realizar OCR sobre la imagen
   Tesseract.recognize(
     imageUrl,
-    'spa', // Asumiendo español, ajusta según necesidad
+    'spa',
     { logger: m => console.log(m) }
   ).then(async ({ data: { text } }) => {
     console.log("Texto extraído:", text);
+
+    // Extraer monto
+    const regexMonto = /S\/\.\d+/;
+    const amount = text.match(regexMonto)?.[0]?.replace('S/.', '') || 'N/A';
+
+    // Extraer y formatear fecha
+    const rawFecha = text.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
+    let fecha = null;
+    if (rawFecha) {
+      const months = {
+        'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+        'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12',
+      };
+      const dateParts = rawFecha.split(' ');
+      fecha = `${dateParts[2]}-${months[dateParts[1].replace('.', '')]}-${dateParts[0]}T${dateParts[4]}:00Z`;
+    }
 
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
@@ -66,7 +82,7 @@ app.post("/process-image", async (req, res) => {
       let extractedData;
       try {
         extractedData = JSON.parse(rawContent);
-        const { amount, nombre, email, telefono, medio_pago, fecha, numero_operacion } = extractedData;
+        const { nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
 
         if (!amount || !nombre || !medio_pago || !numero_operacion) {
           throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
