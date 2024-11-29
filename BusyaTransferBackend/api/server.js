@@ -47,6 +47,8 @@ app.post("/process-image", async (req, res) => {
       .trim();
     console.log("Texto extraído (limpio):", cleanedText);
 
+    let extractedData = {}; // Inicializar extractedData como un objeto vacío
+
     // Extraer monto
     const regexMonto = /S\/\.\s?\d+/;
     const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, '') || null;
