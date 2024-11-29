@@ -43,8 +43,8 @@ app.post("/process-image", async (req, res) => {
     console.log("Texto extraído:", text);
 
     // Extraer monto
-    const regexMonto = /S\/\.\d+/;
-    const amount = text.match(regexMonto)?.[0]?.replace('S/.', '') || 'N/A';
+    const regexMonto = /S\/\.\s?\d+/;
+    const amount = text.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, '') || null;
 
     // Extraer y formatear fecha
     const rawFecha = text.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -57,6 +57,10 @@ app.post("/process-image", async (req, res) => {
       const dateParts = rawFecha.split(' ');
       fecha = `${dateParts[2]}-${months[dateParts[1].replace('.', '')]}-${dateParts[0]}T${dateParts[4]}:00Z`;
     }
+
+    // Extraer teléfono y validarlo como numérico
+    const telefonoRaw = text.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, '') || null;
+    const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
 
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
@@ -82,13 +86,10 @@ app.post("/process-image", async (req, res) => {
       let extractedData;
       try {
         extractedData = JSON.parse(rawContent);
-        const { nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
+        const { nombre, email, medio_pago, numero_operacion } = extractedData;
 
         if (!amount || !nombre || !medio_pago || !numero_operacion) {
           throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
-        }
-        if (!email && !telefono) {
-          throw new Error("Debe incluirse al menos uno: email o teléfono.");
         }
 
         // Inserción en Supabase
@@ -96,13 +97,13 @@ app.post("/process-image", async (req, res) => {
           .from('acreditar')
           .insert([
             {
-              amount: amount === "N/A" ? null : amount,
-              nombre: nombre,
+              amount,
+              nombre,
               email: email === "N/A" ? null : email,
-              telefono: telefono,
-              medio_pago: medio_pago,
-              fecha: fecha,
-              numero_operacion: numero_operacion
+              telefono,
+              medio_pago,
+              fecha,
+              numero_operacion
             }
           ]);
 
