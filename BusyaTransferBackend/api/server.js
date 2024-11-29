@@ -47,10 +47,14 @@ app.post("/process-image", async (req, res) => {
 
     // Solicitar a OpenAI que procese el prompt
     const response = await openai.chat.completions.create({
-      model: "gpt-4",  // Asegúrate de que el modelo sea el correcto
+      model: "gpt-4o",  // Asegúrate de que el modelo sea el correcto
       messages: [{ role: "user", content: prompt }]
     });
 
+    // Imprimir la respuesta cruda de OpenAI para depuración
+      console.log("Respuesta cruda de OpenAI:", response);
+
+    // Intentar analizar la respuesta
     let extractedData;
     try {
       extractedData = JSON.parse(response.choices[0].message.content.trim());
