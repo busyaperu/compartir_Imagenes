@@ -21,9 +21,8 @@ const allowedApps = [
 ];
 
 // Endpoint para procesar la imagen
-app.post("/process-image", async (req, res) => { const { imageUrl, app } = req.body; 
-res.json({ success: true, message: "El endpoint funciona correctamente", receivedData: { imageUrl, app } }); });
-
+app.post("/process-image", async (req, res) => {
+  const { imageUrl, app } = req.body;
 
   try {
     // Validar que la solicitud provenga de una app permitida
@@ -48,7 +47,7 @@ res.json({ success: true, message: "El endpoint funciona correctamente", receive
 
     // Solicitar a OpenAI que procese el prompt
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",  // Asegúrate de que el modelo sea el correcto
       messages: [{ role: "user", content: prompt }]
     });
 
