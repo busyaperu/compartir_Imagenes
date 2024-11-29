@@ -49,32 +49,46 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
-    // Normalizar texto y extraer monto
-    const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
-    const regexMonto = /s\/\s*(\d+(\.\d{1,2})?)/i;
-    const montoMatch = normalizedText.match(regexMonto);
-    if (montoMatch) {
-      extractedData.amount = parseFloat(montoMatch[1]);
-    } else {
-      extractedData.amount = null;
-    }
+
+      // Normalizar texto y extraer monto
+      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
+      const regexMonto = /s\/\s?(\d+)/i; // Busca el monto con el formato "S/ número"
+      const montoMatch = normalizedText.match(regexMonto);
+      if (montoMatch) {
+        extractedData.amount = parseFloat(montoMatch[1]);
+      } else {
+        extractedData.amount = null; // Asignar null si no se encuentra el monto
+      }
 
 
-    // Convertir fecha
-    const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
-    if (rawFecha) {
-      const [day, month, year, time, period] = rawFecha.split(/[\s-]+/);
-      const hourMinute = time.split(':');
-      const hour = period === 'pm' && hourMinute[0] !== '12' ? parseInt(hourMinute[0]) + 12 : hourMinute[0];
-      extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')}T${hour}:${hourMinute[1]}:00Z`;
-    } else {
-      extractedData.fecha = null;
-    }
+      // Definir meses y convertir fecha
+      const months = {
+        'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+        'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+      };
+      const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
+      if (rawFecha) {
+        const regexFecha = /(\d{1,2}) (\w{3})\. (\d{4}) - (\d{1,2}):(\d{2}) (am|pm)/;
+        const match = rawFecha.match(regexFecha);
+        if (match) {
+          const [_, day, month, year, hours, minutes, period] = match;
+          const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
+          extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')}T${formattedHours}:${minutes}:00Z`;
+        }
+      } else {
+        extractedData.fecha = null; // Asignar null si no se encuentra la fecha
+      }
 
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
     extractedData.telefono = telefono;
+
+    console.log("Texto normalizado:", normalizedText);
+    console.log("Monto extraído:", extractedData.amount);
+    console.log("Fecha extraída:", extractedData.fecha);
+    console.log("Email extraído:", extractedData.email);
+
 
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
