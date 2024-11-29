@@ -21,12 +21,8 @@ const allowedApps = [
 ];
 
 // Endpoint para procesar la imagen
-// Endpoint para procesar la imagen
-app.post("/process-image", (req, res) => {
-  const { imageUrl, app } = req.body;
-  res.json({ success: true, message: "El endpoint funciona correctamente", receivedData: { imageUrl, app } });
-});
-
+app.post("/process-image", async (req, res) => { const { imageUrl, app } = req.body; 
+res.json({ success: true, message: "El endpoint funciona correctamente", receivedData: { imageUrl, app } }); });
 
 
   try {
