@@ -25,7 +25,12 @@ app.post("/process-image", async (req, res) => {
   const { imageUrl, app } = req.body;
 
   try {
-    // Validar que la solicitud provenga de una app permitida
+    // Verificar que la URL sea válida (enlace directo a la imagen)
+    if (!imageUrl) {
+      return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
+    }
+
+    // Verificar si la app es permitida
     if (!allowedApps.includes(app)) {
       return res.status(400).json({ error: "Solo se permiten imágenes compartidas desde Yape, Plin o bancos." });
     }
@@ -54,10 +59,14 @@ app.post("/process-image", async (req, res) => {
     // Imprimir la respuesta cruda de OpenAI para depuración
       console.log("Respuesta cruda de OpenAI:", response);
 
+    // Ahora intenta acceder al contenido
+    const rawContent = response.choices[0].message.content.trim();
+    console.log("Contenido crudo:", rawContent);
+
     // Intentar analizar la respuesta
     let extractedData;
     try {
-      extractedData = JSON.parse(response.choices[0].message.content.trim());
+      extractedData = JSON.parse(rawContent);
     } catch (error) {
       throw new Error("Respuesta de OpenAI no es un JSON válido.");
     }
