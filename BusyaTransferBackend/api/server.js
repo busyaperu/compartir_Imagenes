@@ -49,7 +49,10 @@ app.post("/process-image", async (req, res) => {
 
     // Extraer monto
     const regexMonto = /S\/\.\s?\d+/;
-    const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, "") || null;
+    const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, '') || null;
+    if (amount) {
+    extractedData.amount = amount;
+    }
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -81,12 +84,13 @@ app.post("/process-image", async (req, res) => {
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
+    extractedData.telefono = telefono;
 
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
       A continuación, recibirás información de una constancia de transferencia.
       Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
-      - "amount" (puede aparecer como Pago exitoso, Te Yapearon).
+      - "amount" (puede aparecer como Pago exitoso, Te Yapearon, S/. <monto>).
       - "nombre" (puede aparecer como nombre, Enviado a).
       - "email" (puede aparecer como correo, email).
       - "telefono" (puede aparecer como teléfono, celular).
@@ -110,7 +114,7 @@ app.post("/process-image", async (req, res) => {
         extractedData = JSON.parse(rawContent);
         const { nombre, email, medio_pago, numero_operacion } = extractedData;
 
-        if (!amount || !nombre || !medio_pago || !numero_operacion) {
+        if ((!amount && amount !== "0") || !nombre || !medio_pago || !numero_operacion) {
           throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
         }
 
