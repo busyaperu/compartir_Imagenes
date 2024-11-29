@@ -2,12 +2,12 @@
   "name": "compartirImagenes",
   "version": "0.0.1",
   "private": true,
-  "main": "./api/server.js",
+  "main": "./BusyaTransferBackend/api/server.js",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
-    "start": "node ./api/server.js",
+    "start": "node ./BusyaTransferBackend/api/server.js",
     "test": "jest"
   },
   "dependencies": {

@@ -51,7 +51,12 @@ app.post("/process-image", async (req, res) => {
       messages: [{ role: "user", content: prompt }]
     });
 
-    const extractedData = JSON.parse(response.choices[0].message.content.trim());
+    let extractedData;
+    try {
+      extractedData = JSON.parse(response.choices[0].message.content.trim());
+    } catch (error) {
+      throw new Error("Respuesta de OpenAI no es un JSON válido.");
+    }
 
     // Validar campos obligatorios
     const { amount, nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
@@ -71,5 +76,8 @@ app.post("/process-image", async (req, res) => {
   }
 });
 
-// Exportar la aplicación para que Vercel la reconozca
-module.exports = app;
+// Iniciar el servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor iniciado en el puerto ${PORT}`);
+});
