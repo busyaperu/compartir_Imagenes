@@ -57,10 +57,7 @@ app.post("/process-image", async (req, res) => {
       extractedData.amount = amount;
     }
 
-    // Validar email
-    if (!email || email === "N/A") {
-      extractedData.email = null; // Asigna null si el email no está especificado
-    }
+
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -125,6 +122,11 @@ app.post("/process-image", async (req, res) => {
 
         if (!nombre || !medio_pago || !numero_operacion) {
           throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
+        }
+
+                // Validar email
+        if (!email || email === "N/A") {
+          extractedData.email = null; // Asigna null si el email no está especificado
         }
 
         // Inserción en Supabase
