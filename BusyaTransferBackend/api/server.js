@@ -49,44 +49,26 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
-    // Extraer monto ignorando "s/"
-    const regexMonto = /s\/\s?(\d+)/i; // Captura solo el número después de "s/"
-    const montoMatch = cleanedText.match(regexMonto);
+    // Normalizar texto y extraer monto
+    const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
+    const regexMonto = /s\/\s*(\d+(\.\d{1,2})?)/i;
+    const montoMatch = normalizedText.match(regexMonto);
     if (montoMatch) {
-      extractedData.amount = parseFloat(montoMatch[1]); // Captura solo el valor numérico y lo convierte a número flotante
+      extractedData.amount = parseFloat(montoMatch[1]);
     } else {
-      extractedData.amount = null; // Asigna null si no encuentra el monto
+      extractedData.amount = null;
     }
 
 
-
-    // Extraer y formatear fecha
-    const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
-    let fecha = null;
+    // Convertir fecha
+    const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
     if (rawFecha) {
-      const regexFecha = /(\d{1,2}) (\w{3})\. (\d{4}) - (\d{1,2}):(\d{2}) (am|pm)/;
-      const match = rawFecha.match(regexFecha);
-      if (match) {
-        const [_, day, month, year, hours, minutes, period] = match;
-        const months = {
-          'ene': '01',
-          'feb': '02',
-          'mar': '03',
-          'abr': '04',
-          'may': '05',
-          'jun': '06',
-          'jul': '07',
-          'ago': '08',
-          'sep': '09',
-          'oct': '10',
-          'nov': '11',
-          'dic': '12'
-        };
-        const formattedHours = period.toLowerCase() === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
-        const paddedDay = day.padStart(2, '0');
-        const paddedHours = String(formattedHours).padStart(2, '0');
-        fecha = `${year}-${months[month]}-${paddedDay}T${paddedHours}:${minutes}:00+00:00`; // ISO 8601 con zona horaria
-      }
+      const [day, month, year, time, period] = rawFecha.split(/[\s-]+/);
+      const hourMinute = time.split(':');
+      const hour = period === 'pm' && hourMinute[0] !== '12' ? parseInt(hourMinute[0]) + 12 : hourMinute[0];
+      extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')}T${hour}:${hourMinute[1]}:00Z`;
+    } else {
+      extractedData.fecha = null;
     }
 
     // Extraer teléfono y validarlo como numérico
