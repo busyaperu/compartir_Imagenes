@@ -47,23 +47,19 @@ app.post("/process-image", async (req, res) => {
       messages: [{ role: "user", content: prompt }]
     });
 
-    console.log("Respuesta cruda de OpenAI:", response.choices[0].message.content); // Log the raw response
+    console.log("Respuesta cruda de OpenAI:", response);
 
-    const rawContent = response.choices[0].message.content.trim();
-    let extractedData;
-    try {
-      extractedData = JSON.parse(rawContent);
-      const { amount, nombre, email, telefono, medio_pago, numero_operacion } = extractedData;
-      if (!amount || !nombre || !medio_pago || !numero_operacion) {
-        throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
+    if (response.choices[0].message.content.includes("{")) { // Verifica si parece un JSON
+      const rawContent = response.choices[0].message.content.trim();
+      try {
+        const extractedData = JSON.parse(rawContent);
+        res.json({ success: true, data: extractedData });
+      } catch (error) {
+        throw new Error("No se pudo interpretar la respuesta como un JSON.");
       }
-      if (!email && !telefono) {
-        throw new Error("Debe incluirse al menos uno: email o teléfono.");
-      }
-    } catch (error) {
-      throw new Error("Respuesta de OpenAI no es un JSON válido.");
+    } else {
+      throw new Error("La respuesta de OpenAI no contiene un JSON estructurado.");
     }
-    res.json({ success: true, data: extractedData });
   } catch (error) {
     console.error("Error al procesar la imagen:", error);
     res.status(500).json({ error: error.message });
@@ -74,4 +70,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
+
 
