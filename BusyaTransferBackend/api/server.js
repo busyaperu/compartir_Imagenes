@@ -60,7 +60,7 @@ app.post("/process-image", async (req, res) => {
       console.log("Respuesta cruda de OpenAI:", response);
 
     // Ahora intenta acceder al contenido
-    const rawContent = response.choices[0].message.content.trim();
+    const rawContent = response.choices[0].message.content.trim().replace(/[\n\r]/g, '');
     console.log("Contenido crudo:", rawContent);
 
     // Intentar analizar la respuesta
