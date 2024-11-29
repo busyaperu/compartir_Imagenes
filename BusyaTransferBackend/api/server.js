@@ -21,10 +21,12 @@ const allowedApps = [
 ];
 
 // Endpoint para procesar la imagen
-app.post("/process-image", async (req, res) => {
+// Endpoint para procesar la imagen
+app.post("/process-image", (req, res) => {
   const { imageUrl, app } = req.body;
   res.json({ success: true, message: "El endpoint funciona correctamente", receivedData: { imageUrl, app } });
 });
+
 
 
   try {
