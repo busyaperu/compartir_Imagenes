@@ -1,30 +1,55 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const { OpenAI } = require("openai");
+const Tesseract = require("tesseract.js");
+const { createClient } = require("@supabase/supabase-js");
+
+// Inicialización de Express
+const app = express();
+app.use(bodyParser.json());
+
+// Inicialización de OpenAI y Supabase
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
+});
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+const allowedApps = [
+  "com.bcp.innovacxion.yapeapp",
+  "com.bbva.pe.bbvacontigo",
+  "com.interbank.mobilebanking",
+  "pe.scotiabank.banking",
+  "pe.bn.movil",
+  "com.banbif.mobilebanking"
+];
+
 app.post("/process-image", async (req, res) => {
   const { imageUrl, app: clientApp } = req.body;
 
   if (!imageUrl) {
     return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
   }
-  if (!allowedApps.includes(app)) {
+  if (!allowedApps.includes(clientApp)) {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
   // Utilizando Tesseract para realizar OCR sobre la imagen
   Tesseract.recognize(
     imageUrl,
-    'spa',
-    { logger: m => console.log(m) }
+    "spa",
+    { logger: (m) => console.log(m) }
   ).then(async ({ data: { text } }) => {
     console.log("Texto extraído (sin procesar):", text);
 
     // Limpieza del texto extraído
     const cleanedText = text
-      .replace(/p E/g, '') // Elimina caracteres no deseados
+      .replace(/p E/g, "") // Elimina caracteres no deseados
       .trim();
     console.log("Texto extraído (limpio):", cleanedText);
 
     // Extraer monto
     const regexMonto = /S\/\.\s?\d+/;
-    const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, '') || null;
+    const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, "") || null;
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -35,16 +60,26 @@ app.post("/process-image", async (req, res) => {
       if (match) {
         const [_, day, month, year, hours, minutes, period] = match;
         const months = {
-          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
-          'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+          ene: "01",
+          feb: "02",
+          mar: "03",
+          abr: "04",
+          may: "05",
+          jun: "06",
+          jul: "07",
+          ago: "08",
+          sep: "09",
+          oct: "10",
+          nov: "11",
+          dic: "12"
         };
-        const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
-        fecha = `${year}-${months[month]}-${day.padStart(2, '0')}T${formattedHours.padStart(2, '0')}:${minutes}:00Z`;
+        const formattedHours = period === "pm" && hours !== "12" ? parseInt(hours) + 12 : hours;
+        fecha = `${year}-${months[month]}-${day.padStart(2, "0")}T${formattedHours.padStart(2, "0")}:${minutes}:00Z`;
       }
     }
 
     // Extraer teléfono y validarlo como numérico
-    const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, '') || null;
+    const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
 
     // Usar OpenAI para estructurar los datos extraídos
@@ -81,7 +116,7 @@ app.post("/process-image", async (req, res) => {
 
         // Inserción en Supabase
         const { data, error } = await supabase
-          .from('acreditar')
+          .from("acreditar")
           .insert([
             {
               amount,
@@ -108,11 +143,15 @@ app.post("/process-image", async (req, res) => {
       console.error("Error al estructurar los datos con OpenAI:", error);
       res.status(500).json({ error: "Error al estructurar los datos" });
     }
-  }).catch(error => {
+  }).catch((error) => {
     console.error("Error al procesar la imagen con OCR:", error);
     res.status(500).json({ error: "Error al procesar la imagen con OCR" });
   });
 });
 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor iniciado en el puerto ${PORT}`);
+});
 
 
