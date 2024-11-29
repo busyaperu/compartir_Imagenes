@@ -47,6 +47,8 @@ app.post("/process-image", async (req, res) => {
       messages: [{ role: "user", content: prompt }]
     });
 
+    console.log("Respuesta cruda de OpenAI:", response.choices[0].message.content); // Log the raw response
+
     const rawContent = response.choices[0].message.content.trim();
     let extractedData;
     try {
@@ -72,3 +74,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
+
