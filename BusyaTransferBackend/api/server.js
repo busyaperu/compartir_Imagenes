@@ -50,14 +50,12 @@ app.post("/process-image", async (req, res) => {
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
     // Extraer monto
-    const regexMonto = /S\/\.\s?(\d+)/; // Captura el valor numérico después de "S/. "
+    const regexMonto = /S\/\.\s*(\d+(\.\d{1,2})?)/; // Captura números con formato "S/. 10" o "S/. 10.50"
     const amountMatch = cleanedText.match(regexMonto);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : null; // Convierte el monto a número o asigna null
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : null; // Convierte a número flotante o asigna null
     if (amount !== null) {
       extractedData.amount = amount;
     }
-
-
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -68,8 +66,18 @@ app.post("/process-image", async (req, res) => {
       if (match) {
         const [_, day, month, year, hours, minutes, period] = match;
         const months = {
-          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
-          'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+          'ene': '01',
+          'feb': '02',
+          'mar': '03',
+          'abr': '04',
+          'may': '05',
+          'jun': '06',
+          'jul': '07',
+          'ago': '08',
+          'sep': '09',
+          'oct': '10',
+          'nov': '11',
+          'dic': '12'
         };
         const formattedHours = period.toLowerCase() === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
         const paddedDay = day.padStart(2, '0');
@@ -129,20 +137,19 @@ app.post("/process-image", async (req, res) => {
           extractedData.email = null; // Asigna null si el email no está especificado
         }
 
-        // Inserción en Supabase
         const { data, error } = await supabase
-          .from("acreditar")
-          .insert([
-            {
-              amount,
-              nombre,
-              email: email === "N/A" ? null : email,
-              telefono,
-              medio_pago,
-              fecha,
-              numero_operacion
-            }
-          ]);
+        .from("acreditar")
+        .insert([
+          {
+            amount: extractedData.amount || null,
+            nombre,
+            email: email || null,
+            telefono: telefono || null,
+            medio_pago,
+            fecha: fecha || null,
+            numero_operacion
+          }
+        ]);
 
         if (error) {
           console.error("Error al insertar datos en Supabase:", error.message);
