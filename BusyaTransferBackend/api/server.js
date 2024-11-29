@@ -66,18 +66,20 @@ app.post("/process-image", async (req, res) => {
         'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
         'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
       };
+
       const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
       if (rawFecha) {
         const regexFecha = /(\d{1,2}) (\w{3})\. (\d{4}) - (\d{1,2}):(\d{2}) (am|pm)/;
         const match = rawFecha.match(regexFecha);
         if (match) {
           const [_, day, month, year, hours, minutes, period] = match;
-          const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
-          extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')}T${formattedHours}:${minutes}:00Z`;
+          const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours.padStart(2, '0');
+          extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')} ${formattedHours}:${minutes}:00.000000+00`;
         }
       } else {
         extractedData.fecha = null; // Asignar null si no se encuentra la fecha
       }
+
 
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
