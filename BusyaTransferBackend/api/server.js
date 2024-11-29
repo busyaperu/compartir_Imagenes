@@ -21,9 +21,8 @@ const allowedApps = [
 ];
 
 // Endpoint para procesar la imagen
-app.post("/process-image", async (req, res) => { const { imageUrl, app } = req.body; 
-return res.json({ success: true, message: "El endpoint funciona correctamente", receivedData: { imageUrl, app } }); });
-
+app.post("/process-image", async (req, res) => {
+  const { imageUrl, app } = req.body;
 
   try {
     // Validar que la solicitud provenga de una app permitida
