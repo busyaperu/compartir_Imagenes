@@ -49,13 +49,16 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
-    // Extraer monto
-    const regexMonto = /S\/\.\s*(\d+(\.\d{1,2})?)/; // Captura números con formato "S/. 10" o "S/. 10.50"
-    const amountMatch = cleanedText.match(regexMonto);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : null; // Convierte a número flotante o asigna null
-    if (amount !== null) {
-      extractedData.amount = amount;
+    // Extraer monto ignorando "s/"
+    const regexMonto = /s\/\s?(\d+)/i; // Captura solo el número después de "s/"
+    const montoMatch = cleanedText.match(regexMonto);
+    if (montoMatch) {
+      extractedData.amount = parseFloat(montoMatch[1]); // Captura solo el valor numérico y lo convierte a número flotante
+    } else {
+      extractedData.amount = null; // Asigna null si no encuentra el monto
     }
+
+
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -119,32 +122,34 @@ app.post("/process-image", async (req, res) => {
         extractedData = JSON.parse(rawContent);
         const { amount, nombre, email, telefono, medio_pago, fecha, numero_operacion } = extractedData;
 
-        // Validar campos obligatorios y formatear valores
-        if (!amount || amount === "No especificado") {
-          extractedData.amount = null; // Asigna null si el monto no está especificado
-        }
+      // Validar campos obligatorios y formatear valores
+      if (!amount || amount === "N/A") {
+        extractedData.amount = null; // Asigna null si el monto no está especificado
+      } else {
+        extractedData.amount = parseFloat(amount); // Convierte el monto a número
+      }
 
-        if (!telefono || telefono.includes("***")) {
-          extractedData.telefono = null; // Asigna null si el teléfono no es numérico
-        }
+      if (!telefono || telefono.includes("***") || !/^\d+$/.test(telefono)) {
+        extractedData.telefono = null; // Asigna null si el teléfono no es numérico o contiene caracteres inválidos
+      }
 
-        if (!nombre || !medio_pago || !numero_operacion) {
-          throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
-        }
+      if (!nombre || !medio_pago || !numero_operacion) {
+        throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
+      }
 
-                // Validar email
-        if (!email || email === "N/A") {
-          extractedData.email = null; // Asigna null si el email no está especificado
-        }
+      // Validar email
+      if (!email || email === "N/A") {
+        extractedData.email = null; // Asigna null si el email no está especificado
+      }
 
         const { data, error } = await supabase
         .from("acreditar")
         .insert([
           {
-            amount: extractedData.amount || null,
+            amount: extractedData.amount,
             nombre,
-            email: email || null,
-            telefono: telefono || null,
+            email: extractedData.email,
+            telefono: extractedData.telefono,
             medio_pago,
             fecha: fecha || null,
             numero_operacion
