@@ -50,11 +50,13 @@ app.post("/process-image", async (req, res) => {
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
     // Extraer monto
-    const regexMonto = /S\/\.\s?\d+/;
-    const amount = cleanedText.match(regexMonto)?.[0]?.replace(/S\/\.\s?/, '') || null;
+    const regexMonto = /S\/\.\s?(\d+)/; // Busca el monto con el formato "S/. número"
+    const amountMatch = cleanedText.match(regexMonto);
+    const amount = amountMatch ? amountMatch[1] : null;
     if (amount) {
-    extractedData.amount = amount;
+      extractedData.amount = amount; // Asigna el valor extraído al objeto extractedData
     }
+
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
@@ -65,21 +67,13 @@ app.post("/process-image", async (req, res) => {
       if (match) {
         const [_, day, month, year, hours, minutes, period] = match;
         const months = {
-          ene: "01",
-          feb: "02",
-          mar: "03",
-          abr: "04",
-          may: "05",
-          jun: "06",
-          jul: "07",
-          ago: "08",
-          sep: "09",
-          oct: "10",
-          nov: "11",
-          dic: "12"
+          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+          'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
         };
-        const formattedHours = period === "pm" && hours !== "12" ? parseInt(hours) + 12 : hours;
-        fecha = `${year}-${months[month]}-${day.padStart(2, "0")}T${formattedHours.padStart(2, "0")}:${minutes}:00Z`;
+        const formattedHours = period.toLowerCase() === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours;
+        const paddedDay = day.padStart(2, '0');
+        const paddedHours = String(formattedHours).padStart(2, '0');
+        fecha = `${year}-${months[month]}-${paddedDay}T${paddedHours}:${minutes}:00+00:00`; // ISO 8601 con zona horaria
       }
     }
 
