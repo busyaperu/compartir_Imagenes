@@ -1,5 +1,5 @@
 app.post("/process-image", async (req, res) => {
-  const { imageUrl, app } = req.body;
+  const { imageUrl, app: clientApp } = req.body;
 
   if (!imageUrl) {
     return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
