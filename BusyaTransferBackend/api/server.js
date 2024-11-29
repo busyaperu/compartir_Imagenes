@@ -50,13 +50,17 @@ app.post("/process-image", async (req, res) => {
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
     // Extraer monto
-    const regexMonto = /S\/\.\s?(\d+)/; // Busca el monto con el formato "S/. número"
+    const regexMonto = /S\/\.\s?(\d+)/; // Captura el valor numérico después de "S/. "
     const amountMatch = cleanedText.match(regexMonto);
-    const amount = amountMatch ? amountMatch[1] : null;
-    if (amount) {
-      extractedData.amount = amount; // Asigna el valor extraído al objeto extractedData
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : null; // Convierte el monto a número o asigna null
+    if (amount !== null) {
+      extractedData.amount = amount;
     }
 
+    // Validar email
+    if (!email || email === "N/A") {
+      extractedData.email = null; // Asigna null si el email no está especificado
+    }
 
     // Extraer y formatear fecha
     const rawFecha = cleanedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
