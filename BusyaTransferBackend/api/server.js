@@ -114,10 +114,19 @@ app.post("/process-image", async (req, res) => {
       let extractedData;
       try {
         extractedData = JSON.parse(rawContent);
-        const { nombre, email, medio_pago, numero_operacion } = extractedData;
+        const { amount, nombre, email, telefono, medio_pago, fecha, numero_operacion } = extractedData;
 
-        if ((!amount && amount !== "0") || !nombre || !medio_pago || !numero_operacion) {
-          throw new Error("Faltan campos obligatorios: amount, nombre, medio_pago o numero_operacion.");
+        // Validar campos obligatorios y formatear valores
+        if (!amount || amount === "No especificado") {
+          extractedData.amount = null; // Asigna null si el monto no está especificado
+        }
+
+        if (!telefono || telefono.includes("***")) {
+          extractedData.telefono = null; // Asigna null si el teléfono no es numérico
+        }
+
+        if (!nombre || !medio_pago || !numero_operacion) {
+          throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
         }
 
         // Inserción en Supabase
