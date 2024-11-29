@@ -43,7 +43,7 @@ app.post("/process-image", async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [{ role: "user", content: prompt }]
     });
 
