@@ -66,11 +66,17 @@ app.post("/process-image", async (req, res) => {
       }
     }
 
+    console.log("Monto extraído:", amount); // Verificar cuánto está extrayendo el OCR
+
     // Definir normalizedText antes de su uso
     let normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
 
     // Si no se detectó monto, buscar en el texto completo normalizado
     if (!amount) {
+
+      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
+      console.log("Texto normalizado:", normalizedText); // Ver el texto completo para comprobar el monto
+      
       const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       
