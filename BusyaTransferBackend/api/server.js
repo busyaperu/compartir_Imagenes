@@ -66,6 +66,8 @@ app.post("/process-image", async (req, res) => {
     // Validar el monto extraído
     if (!amount || amount === "N/A") {
       extractedData.amount = null; // Asigna null si el monto no está especificado
+    } else {
+      extractedData.amount = parseFloat(amount).toFixed(2); // Formatea el monto a dos decimales
     }
 
     if (!telefono || telefono.includes("***")) {
