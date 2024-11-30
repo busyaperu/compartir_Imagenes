@@ -13,27 +13,32 @@ const openai = new OpenAI({
 });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// Listado de aplicaciones permitidas (ID de los bancos y billeteras)
 const allowedApps = [
-  "com.bcp.innovacxion.yapeapp",
-  "com.bbva.pe.bbvacontigo",
-  "com.interbank.mobilebanking",
-  "pe.scotiabank.banking",
-  "pe.bn.movil",
-  "com.banbif.mobilebanking"
+  { id: "com.bcp.innovacxion.yapeapp", name: "Yape" },
+  { id: "com.bbva.pe.bbvacontigo", name: "BBVA" },
+  { id: "com.interbank.mobilebanking", name: "Interbank" },
+  { id: "pe.scotiabank.banking", name: "Scotiabank" },
+  { id: "pe.bn.movil", name: "BN Movil" },
+  { id: "com.banbif.mobilebanking", name: "BanBif" }
 ];
 
 app.post("/process-image", async (req, res) => {
-  const { imageUrl, app: clientApp } = req.body;
+  const { imageUrl, app: clientApp, cleanedText } = req.body;
 
   if (!imageUrl) {
     return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
   }
-  if (!allowedApps.includes(clientApp)) {
+
+  const app = allowedApps.find(a => a.id === clientApp);
+  if (!app) {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
-  // Usando el texto limpio de OCR (Este es el texto limpio extraído de la imagen)
-  const cleanedText = req.body.cleanedText; // Asegúrate de enviar el texto procesado correctamente
+  // Verificar si el texto limpio está presente
+  if (!cleanedText || cleanedText === 'undefined') {
+    return res.status(400).json({ error: "Texto extraído vacío o no válido." });
+  }
 
   console.log("Texto extraído (limpio):", cleanedText);
 
@@ -48,6 +53,7 @@ app.post("/process-image", async (req, res) => {
     - "medio_pago" (puede aparecer como Destino).
     - "fecha_constancia" (puede aparecer como Fecha y hora).
     - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
+    - "app_id" (el ID de la aplicación que hizo la transferencia).
     Texto de la constancia: ${cleanedText}
   `;
 
@@ -86,6 +92,9 @@ app.post("/process-image", async (req, res) => {
       extractedData.email = null; // Asigna null si el email no está especificado
     }
 
+    // Agregar el ID de la aplicación
+    extractedData.app_id = app.id;
+
     // Inserción en Supabase
     const { data, error } = await supabase.from('acreditar').insert([{
       amount: extractedData.amount,
@@ -95,6 +104,7 @@ app.post("/process-image", async (req, res) => {
       medio_pago: extractedData.medio_pago,
       fecha_constancia: extractedData.fecha_constancia, 
       numero_operacion: extractedData.numero_operacion,
+      app_id: extractedData.app_id  // Se incluye el ID de la aplicación
     }]);
 
     if (error) {
