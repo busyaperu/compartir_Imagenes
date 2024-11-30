@@ -66,9 +66,11 @@ app.post("/process-image", async (req, res) => {
       }
     }
 
+    // Definir normalizedText antes de su uso
+    let normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
+
     // Si no se detectó monto, buscar en el texto completo normalizado
     if (!amount) {
-      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
       const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       
@@ -92,7 +94,7 @@ app.post("/process-image", async (req, res) => {
       email: null, // Ejemplo, reemplazar con datos extraídos
       telefono: "*** *** 776", // Ejemplo, reemplazar con datos extraídos
       medio_pago: "Yape", // Ejemplo, reemplazar con datos extraídos
-      fecha: "2024-11-26 12:33:00", // Ejemplo, reemplazar con datos extraídos
+      fecha_constancia: "2024-11-26 12:33:00", // Ejemplo, reemplazar con datos extraídos
       numero_operacion: "01972937" // Ejemplo, reemplazar con datos extraídos
     };
 
@@ -123,7 +125,7 @@ app.post("/process-image", async (req, res) => {
       - "email" (puede aparecer como correo, email).
       - "telefono" (puede aparecer como teléfono, celular).
       - "medio_pago" (puede aparecer como Destino).
-      - "fecha" (puede aparecer como Fecha y hora).
+      - "fecha_constancia" (puede aparecer como Fecha y hora).
       - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
       Texto de la constancia: ${cleanedText}
     `;
@@ -170,6 +172,7 @@ app.post("/process-image", async (req, res) => {
             email: extractedData.email,
             telefono: extractedData.telefono,
             medio_pago: extractedData.medio_pago,
+            fecha_constancia: extractedData.fecha, 
             numero_operacion: extractedData.numero_operacion,
           }
         ]);
