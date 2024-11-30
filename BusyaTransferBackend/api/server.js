@@ -23,7 +23,7 @@ const allowedApps = [
 ];
 
 app.post("/process-image", async (req, res) => {
-  const { imageUrl, app: clientApp } = req.body;
+  const { imageUrl, app: clientApp, cleanedText } = req.body;  // Añadido cleanedText desde el cuerpo de la solicitud
 
   if (!imageUrl) {
     return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
