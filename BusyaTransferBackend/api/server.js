@@ -80,6 +80,11 @@ app.post("/process-image", async (req, res) => {
       extractedData.amount = null; // Asignar null si no se encuentra el monto
     }
 
+    // Validar el monto antes de la inserción
+    if (extractedData.amount === null || isNaN(extractedData.amount)) {
+      console.error("Error: Monto no detectado o inválido.");
+    }
+
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
