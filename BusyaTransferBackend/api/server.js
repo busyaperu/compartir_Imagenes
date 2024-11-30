@@ -42,33 +42,23 @@ app.post("/process-image", async (req, res) => {
     console.log("Texto extraído (sin procesar):", text);
 
     // Limpieza del texto extraído
-    const cleanedText = text.replace(/p E/g, '').trim();  // Elimina caracteres no deseados
+    const cleanedText = text.trim(); // Elimina espacios en blanco al inicio y final
     console.log("Texto extraído (limpio):", cleanedText);  // Muestra el texto limpio
-    
 
-    // Normalizar y dividir texto en líneas
-    const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '');
-
-    // Buscar la línea después de "¡Yapeaste!" y detectar monto
-    const yapeasteIndex = lines.findIndex(line => line.includes('¡Yapeaste!'));
+    // Buscar monto con la expresión regular ajustada
+    const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "S/" seguido de números, considerando puntos o comas
     let amount = null;
 
-    if (yapeasteIndex !== -1 && yapeasteIndex + 1 < lines.length) {
-      // Línea inmediatamente después de "¡Yapeaste!"
-      const possibleAmountLine = lines[yapeasteIndex + 1];
+    const montoMatch = cleanedText.match(regexMonto);
 
-      // Ajustar expresión regular para extraer solo el monto
-      const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "S/" seguido de números
-      const montoMatch = possibleAmountLine.match(regexMonto);
-      
-      if (montoMatch) {
-        amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
-      }
+    if (montoMatch) {
+      amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir monto a número
     }
 
     // Si no se encontró monto, asignar null
-    if (!amount) {
-      amount = null;
+    if (!amount || isNaN(amount)) {
+      console.error("Monto no detectado o inválido.");
+      return res.status(400).json({ error: "Monto no válido, no se puede insertar." });
     }
 
     console.log("Monto extraído:", amount); // Verificar cuánto está extrayendo el OCR
@@ -78,35 +68,6 @@ app.post("/process-image", async (req, res) => {
       console.error("Monto no detectado o inválido.");
       return res.status(400).json({ error: "Monto no válido, no se puede insertar." });
     }
-
-    // Definir normalizedText antes de su uso
-    let normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
-
-    // Si no se detectó monto, buscar en el texto completo normalizado
-    if (!amount) {
-
-      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
-      console.log("Texto normalizado:", normalizedText); // Ver el texto completo para comprobar el monto
-
-      const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "s/" seguido de números
-      const montoMatch = normalizedText.match(regexMonto);
-      
-      // Extraer monto si se encuentra
-      let amount = null;
-      if (montoMatch) {
-        amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
-      }
-    }
-
-    console.log("Monto extraído:", amount);  // Muestra el monto extraído
-
-    // Si no se encontró monto, asignar null
-    if (!amount || isNaN(amount)) {
-      console.error("Error: Monto no detectado o inválido.");
-      return res.status(400).json({ error: "Monto no válido, no se puede insertar." });
-    }
-
-    console.log("Monto extraído:", amount);
 
     // Asignar monto al objeto de datos
     let extractedData = {
@@ -124,24 +85,21 @@ app.post("/process-image", async (req, res) => {
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
     extractedData.telefono = telefono;
 
-    console.log("Texto normalizado:", normalizedText);
+    console.log("Texto normalizado:", cleanedText);
     console.log("Monto extraído:", extractedData.amount);
     console.log("Email extraído:", extractedData.email);
 
-
-    // Usar OpenAI para estructurar los datos extraídos
-    const prompt = `
-      A continuación, recibirás información de una constancia de transferencia.
-      Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
-      - "amount" (puede aparecer como Pago exitoso, Te Yapearon, S/. <monto>).
-      - "nombre" (puede aparecer como nombre, Enviado a).
-      - "email" (puede aparecer como correo, email).
-      - "telefono" (puede aparecer como teléfono, celular).
-      - "medio_pago" (puede aparecer como Destino).
-      - "fecha_constancia" (puede aparecer como Fecha y hora).
-      - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
-      Texto de la constancia: ${cleanedText}
-    `;
+    // Proceder con OpenAI para estructurar los datos extraídos
+    const prompt = `A continuación, recibirás información de una constancia de transferencia.
+                    Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
+                    - "amount" (puede aparecer como Pago exitoso, Te Yapearon, S/. <monto>).
+                    - "nombre" (puede aparecer como nombre, Enviado a).
+                    - "email" (puede aparecer como correo, email).
+                    - "telefono" (puede aparecer como teléfono, celular).
+                    - "medio_pago" (puede aparecer como Destino).
+                    - "fecha_constancia" (puede aparecer como Fecha y hora).
+                    - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
+                    Texto de la constancia: ${cleanedText}`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -174,23 +132,22 @@ app.post("/process-image", async (req, res) => {
         if (!email || email.toLowerCase() === "n/a") {
           extractedData.email = null; // Asigna null si el email no está especificado
         }
+
         // Validar y transformar fecha_constancia
         if (!fecha_constancia || fecha_constancia.toLowerCase() === "n/a") {
           extractedData.fecha_constancia = null; // Asigna null si la fecha no está especificada
         }
 
-
-        const { data, error } = await supabase.from('acreditar').insert([
-          {
-            amount: extractedData.amount,
-            nombre: extractedData.nombre,
-            email: extractedData.email,
-            telefono: extractedData.telefono,
-            medio_pago: extractedData.medio_pago,
-            fecha_constancia: extractedData.fecha_constancia, 
-            numero_operacion: extractedData.numero_operacion,
-          }
-        ]);
+        // Inserción en Supabase
+        const { data, error } = await supabase.from('acreditar').insert([{
+          amount: extractedData.amount,
+          nombre: extractedData.nombre,
+          email: extractedData.email,
+          telefono: extractedData.telefono,
+          medio_pago: extractedData.medio_pago,
+          fecha_constancia: extractedData.fecha_constancia, 
+          numero_operacion: extractedData.numero_operacion,
+        }]);
 
         if (error) {
           console.error("Error al insertar datos en Supabase:", error.message);
@@ -216,5 +173,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
-
-
