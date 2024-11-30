@@ -61,12 +61,19 @@ app.post("/process-image", async (req, res) => {
       const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "S/" seguido de números
       const montoMatch = possibleAmountLine.match(regexMonto);
       
+      let amount = null;
       if (montoMatch) {
         amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
       }
     }
 
     console.log("Monto extraído:", amount); // Verificar cuánto está extrayendo el OCR
+
+    // Si no se detectó monto, muestra el mensaje de error
+    if (!amount) {
+      console.error("Monto no detectado o inválido.");
+      return res.status(400).json({ error: "Monto no válido, no se puede insertar." });
+    }
 
     // Definir normalizedText antes de su uso
     let normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
@@ -76,7 +83,7 @@ app.post("/process-image", async (req, res) => {
 
       const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
       console.log("Texto normalizado:", normalizedText); // Ver el texto completo para comprobar el monto
-      
+
       const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       
