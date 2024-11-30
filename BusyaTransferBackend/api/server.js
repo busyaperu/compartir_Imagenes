@@ -49,6 +49,8 @@ app.post("/process-image", async (req, res) => {
     // Normalizar y dividir texto en líneas
     const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '');
 
+    console.log("Texto dividido en líneas:", lines);
+
     // Buscar la línea después de "¡Yapeaste!"
     const yapeasteIndex = lines.findIndex(line => line.includes('¡Yapeaste!'));
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
@@ -65,8 +67,8 @@ app.post("/process-image", async (req, res) => {
     }
 
     // Si no se detecta monto basado en "¡Yapeaste!", buscar en el texto normalizado
+    const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Mover normalización aquí para asegurar su existencia
     if (!amount) {
-      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
       const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       if (montoMatch) {
