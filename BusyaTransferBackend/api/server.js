@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require("express"); 
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
@@ -61,19 +61,23 @@ app.post("/process-image", async (req, res) => {
     console.log("Respuesta de OpenAI:", rawContent);
 
     let extractedData = JSON.parse(rawContent);
+
+    // Asegúrate de extraer los datos correctamente y reemplazar los valores estáticos
     const { amount, nombre, email, telefono, medio_pago, fecha_constancia, numero_operacion } = extractedData;
 
-    // Validar el monto extraído
+    // Si el monto es "N/A", asignar null
     if (!amount || amount === "N/A") {
       extractedData.amount = null; // Asigna null si el monto no está especificado
     } else {
       extractedData.amount = parseFloat(amount).toFixed(2); // Formatea el monto a dos decimales
     }
 
+    // Validar teléfono y asignar null si no es numérico
     if (!telefono || telefono.includes("***")) {
-      extractedData.telefono = null; // Asigna null si el teléfono no es numérico
+      extractedData.telefono = null;
     }
 
+    // Validar campos obligatorios
     if (!nombre || !medio_pago || !numero_operacion) {
       throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
     }
