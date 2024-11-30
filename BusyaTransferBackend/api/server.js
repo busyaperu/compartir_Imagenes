@@ -58,11 +58,11 @@ app.post("/process-image", async (req, res) => {
       const possibleAmountLine = lines[yapeasteIndex + 1];
 
       // Ajustar expresión regular para extraer solo el monto
-      const regexMonto = /s\/\s*(\d+)/i; // Detecta "S/" seguido de números
+      const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "S/" seguido de números
       const montoMatch = possibleAmountLine.match(regexMonto);
       
       if (montoMatch) {
-        amount = parseFloat(montoMatch[1]); // Convertir el monto a float
+        amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
       }
     }
 
@@ -71,18 +71,18 @@ app.post("/process-image", async (req, res) => {
 
     // Si no se detectó monto, buscar en el texto completo normalizado
     if (!amount) {
-      const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
+      const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       
       if (montoMatch) {
-        amount = parseFloat(montoMatch[1]); // Convertir el monto a float
+        amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
       }
     }
 
     // Si no se encontró monto, asignar null
     if (!amount || isNaN(amount)) {
       console.error("Error: Monto no detectado o inválido.");
-      amount = null; // Asignar null si no se detecta monto
+      return res.status(400).json({ error: "Monto no válido, no se puede insertar." });
     }
 
     console.log("Monto extraído:", amount);
@@ -97,14 +97,6 @@ app.post("/process-image", async (req, res) => {
       fecha_constancia: "2024-11-26 12:33:00", // Ejemplo, reemplazar con datos extraídos
       numero_operacion: "01972937" // Ejemplo, reemplazar con datos extraídos
     };
-
-    // Verificación y proceso de inserción en Supabase
-    if (extractedData.amount === null) {
-      console.error("Monto no válido, no se puede insertar.");
-    } else {
-      // Inserción en Supabase (simulada)
-      console.log("Datos a insertar:", extractedData);
-    }
 
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
@@ -142,7 +134,7 @@ app.post("/process-image", async (req, res) => {
       let extractedData;
       try {
         extractedData = JSON.parse(rawContent);
-        const { amount, nombre, email, telefono, medio_pago, fecha, numero_operacion } = extractedData;
+        const { amount, nombre, email, telefono, medio_pago, fecha_constancia, numero_operacion } = extractedData;
 
         // Validaciones y transformaciones
         if (!amount || amount === "N/A") {
@@ -161,18 +153,20 @@ app.post("/process-image", async (req, res) => {
         if (!email || email.toLowerCase() === "n/a") {
           extractedData.email = null; // Asigna null si el email no está especificado
         }
+        // Validar y transformar fecha_constancia
+        if (!fecha_constancia || fecha_constancia.toLowerCase() === "n/a") {
+          extractedData.fecha_constancia = null; // Asigna null si la fecha no está especificada
+        }
 
 
-        const { data, error } = await supabase
-        .from('acreditar')
-        .insert([
+        const { data, error } = await supabase.from('acreditar').insert([
           {
             amount: extractedData.amount,
             nombre: extractedData.nombre,
             email: extractedData.email,
             telefono: extractedData.telefono,
             medio_pago: extractedData.medio_pago,
-            fecha_constancia: extractedData.fecha, 
+            fecha_constancia: extractedData.fecha_constancia, 
             numero_operacion: extractedData.numero_operacion,
           }
         ]);
