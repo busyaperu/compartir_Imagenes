@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
-const fetch = require("node-fetch"); // Asegúrate de tener 'node-fetch' instalado
+const axios = require("axios");  // Cambié a axios para obtener la imagen
 
 // Inicialización de Express
 const app = express();
@@ -28,9 +28,9 @@ app.post("/process-image", async (req, res) => {
   }
 
   try {
-    // Enviar la imagen a OpenAI para procesarla
-    const imageResponse = await fetch(imageUrl);
-    const imageBuffer = await imageResponse.buffer();
+    // Usar axios para obtener la imagen
+    const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    const imageBuffer = Buffer.from(imageResponse.data, 'binary');
 
     // Construir el prompt específico para OpenAI
     const prompt = `
