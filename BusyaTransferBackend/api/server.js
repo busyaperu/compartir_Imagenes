@@ -70,7 +70,6 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
 
-
     // Normalizar texto y extraer monto
     const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
     const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
@@ -81,34 +80,6 @@ app.post("/process-image", async (req, res) => {
       extractedData.amount = null; // Asignar null si no se encuentra el monto
     }
 
-    // Extraer fecha y convertirla al formato esperado
-    const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
-    if (rawFecha) {
-      const regexFecha = /(\d{1,2}) (\w{3})\. (\d{4}) - (\d{1,2}):(\d{2}) (am|pm)/;
-      const match = rawFecha.match(regexFecha);
-      if (match) {
-        const [_, day, month, year, hours, minutes, period] = match;
-        const months = {
-          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
-          'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
-        };
-        const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours.padStart(2, '0');
-        extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')} ${formattedHours}:${minutes}:00.000000+00`;
-      }
-    } else {
-      extractedData.fecha = null; // Asignar null si no se encuentra la fecha
-    }
-
-    // Validar valores extraídos y preparar para la inserción
-    if (!extractedData.amount) {
-      console.error("Error: Monto no detectado.");
-    }
-    if (!extractedData.fecha) {
-      console.error("Error: Fecha no detectada o formateada incorrectamente.");
-    }
-      
-
-
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
     const telefono = telefonoRaw && /^\d+$/.test(telefonoRaw) ? telefonoRaw : null;
@@ -116,7 +87,6 @@ app.post("/process-image", async (req, res) => {
 
     console.log("Texto normalizado:", normalizedText);
     console.log("Monto extraído:", extractedData.amount);
-    console.log("Fecha extraída:", extractedData.fecha);
     console.log("Email extraído:", extractedData.email);
 
 
@@ -166,13 +136,6 @@ app.post("/process-image", async (req, res) => {
           extractedData.email = null; // Asigna null si el email no está especificado
         }
 
-        // Formatear fecha para Supabase
-        if (fecha) {
-          extractedData.fecha = fecha; // Utiliza el formato transformado
-        } else {
-          throw new Error("La fecha no se pudo extraer o transformar correctamente.");
-        }
-
 
         const { data, error } = await supabase
         .from('acreditar')
@@ -183,7 +146,6 @@ app.post("/process-image", async (req, res) => {
             email: extractedData.email,
             telefono: extractedData.telefono,
             medio_pago: extractedData.medio_pago,
-            fecha: extractedData.fecha,
             numero_operacion: extractedData.numero_operacion,
           }
         ]);
