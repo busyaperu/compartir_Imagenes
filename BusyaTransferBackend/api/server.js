@@ -32,12 +32,12 @@ app.post("/process-image", async (req, res) => {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
-  // Usando solo el texto limpio de OCR, sin depender de OCR para el monto
-  const cleanedText = "¡Yapeaste! Miguel S. Alvarez O. 26 nov. 2024 - 12:33 pm N9 de celular: *** *** 776 Destino: Yape NO de operación: 01972937 s/ 10"; // Este es el texto limpio
+  // Usando el texto limpio de OCR (este es el texto limpio)
+  const cleanedText = "¡Yapeaste! Jose J. Camus L. 30 nov. 2024 - 04:32 pm N9 de celular: *** *** 875 Destino: Yape NO de operación: 16941732 s/ 0.10"; 
 
   console.log("Texto extraído (limpio):", cleanedText);
 
-  // Usar OpenAI GPT para procesar y extraer monto
+  // Usar OpenAI GPT para procesar y extraer datos
   const prompt = `
     A continuación, recibirás información de una constancia de transferencia.
     Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
@@ -62,10 +62,9 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = JSON.parse(rawContent);
 
-    // Asegúrate de extraer los datos correctamente y reemplazar los valores estáticos
+    // Validar el monto extraído
     const { amount, nombre, email, telefono, medio_pago, fecha_constancia, numero_operacion } = extractedData;
 
-    // Si el monto es "N/A", asignar null
     if (!amount || amount === "N/A") {
       extractedData.amount = null; // Asigna null si el monto no está especificado
     } else {
