@@ -28,12 +28,16 @@ app.post("/process-image", async (req, res) => {
   if (!imageUrl) {
     return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
   }
-  if (!allowedApps.includes(clientApp)) {
-    return res.status(400).json({ error: "Aplicación no permitida." });
+
+  // Verificar si el texto limpio (cleanedText) es dinámico y está presente
+  if (!cleanedText || cleanedText === 'undefined') {
+    return res.status(400).json({ error: "Texto extraído vacío o no válido." });
   }
 
-  // Usando el texto limpio de OCR (este es el texto limpio)
-  const cleanedText = req.body.cleanedText; // Asegúrate de que este valor sea dinámico
+  const app = allowedApps.find(a => a.id === clientApp);
+  if (!app) {
+    return res.status(400).json({ error: "Aplicación no permitida." });
+  }
 
   console.log("Texto extraído (limpio):", cleanedText);
 
