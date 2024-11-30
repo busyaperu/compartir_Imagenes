@@ -32,8 +32,8 @@ app.post("/process-image", async (req, res) => {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
-  // Usando el texto limpio de OCR (este es el texto limpio)
-  const cleanedText = "¡Yapeaste! Jose J. Camus L. 30 nov. 2024 - 04:32 pm N9 de celular: *** *** 875 Destino: Yape NO de operación: 16941732 s/ 0.10"; 
+  // Usando el texto limpio de OCR (Este es el texto limpio extraído de la imagen)
+  const cleanedText = req.body.cleanedText; // Asegúrate de enviar el texto procesado correctamente
 
   console.log("Texto extraído (limpio):", cleanedText);
 
@@ -62,9 +62,9 @@ app.post("/process-image", async (req, res) => {
 
     let extractedData = JSON.parse(rawContent);
 
-    // Validar el monto extraído
     const { amount, nombre, email, telefono, medio_pago, fecha_constancia, numero_operacion } = extractedData;
 
+    // Validar el monto extraído
     if (!amount || amount === "N/A") {
       extractedData.amount = null; // Asigna null si el monto no está especificado
     } else {
