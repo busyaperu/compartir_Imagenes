@@ -61,10 +61,14 @@ app.post("/process-image", async (req, res) => {
       const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "S/" seguido de números
       const montoMatch = possibleAmountLine.match(regexMonto);
       
-      let amount = null;
       if (montoMatch) {
         amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
       }
+    }
+
+    // Si no se encontró monto, asignar null
+    if (!amount) {
+      amount = null;
     }
 
     console.log("Monto extraído:", amount); // Verificar cuánto está extrayendo el OCR
