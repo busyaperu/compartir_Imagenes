@@ -42,9 +42,30 @@ app.post("/process-image", async (req, res) => {
     console.log("Texto extraído (sin procesar):", text);
 
     // Limpieza del texto extraído
-    const cleanedText = text
-      .replace(/p E/g, "") // Elimina caracteres no deseados
-      .trim();
+    const cleanedText = text.trim(); // Elimina espacios en blanco al inicio y final
+    console.log("Texto extraído (limpio):", cleanedText);
+    
+    // Normalizar y dividir texto en líneas
+    const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '');
+    
+    // Buscar la línea después de "¡Yapeaste!"
+    const yapeasteIndex = lines.findIndex(line => line.includes('¡Yapeaste!'));
+    let amount = null;
+    
+    if (yapeasteIndex !== -1 && yapeasteIndex + 1 < lines.length) {
+      // Línea inmediatamente después de "¡Yapeaste!"
+      const possibleAmountLine = lines[yapeasteIndex + 1];
+      const numericMatch = possibleAmountLine.match(/\d+/); // Detecta solo números en la línea
+      if (numericMatch) {
+        amount = parseFloat(numericMatch[0]); // Convertir el primer número encontrado a float
+      }
+    }
+    
+    // Si no se encontró monto, asignar null
+    if (!amount) {
+      amount = null;
+    }
+    
     console.log("Texto extraído (limpio):", cleanedText);
 
     let extractedData = {}; // Inicializar extractedData como un objeto vacío
@@ -61,24 +82,22 @@ app.post("/process-image", async (req, res) => {
       }
 
 
-      // Definir meses y convertir fecha
-      const months = {
-        'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
-        'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
-      };
-
-      const rawFecha = normalizedText.match(/\d{1,2} \w{3}\. \d{4} - \d{1,2}:\d{2} (am|pm)/)?.[0];
       if (rawFecha) {
         const regexFecha = /(\d{1,2}) (\w{3})\. (\d{4}) - (\d{1,2}):(\d{2}) (am|pm)/;
         const match = rawFecha.match(regexFecha);
         if (match) {
           const [_, day, month, year, hours, minutes, period] = match;
+          const months = {
+            'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+            'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+          };
           const formattedHours = period === 'pm' && hours !== '12' ? parseInt(hours) + 12 : hours.padStart(2, '0');
-          extractedData.fecha = `${year}-${months[month]}-${day.padStart(2, '0')} ${formattedHours}:${minutes}:00.000000+00`;
+          fecha = `${year}-${months[month]}-${day.padStart(2, '0')} ${formattedHours}:${minutes}:00.000000+00`;
         }
       } else {
-        extractedData.fecha = null; // Asignar null si no se encuentra la fecha
+        fecha = null;
       }
+      
 
 
     // Extraer teléfono y validarlo como numérico
@@ -120,37 +139,43 @@ app.post("/process-image", async (req, res) => {
         extractedData = JSON.parse(rawContent);
         const { amount, nombre, email, telefono, medio_pago, fecha, numero_operacion } = extractedData;
 
-      // Validar campos obligatorios y formatear valores
-      if (!amount || amount === "N/A") {
-        extractedData.amount = null; // Asigna null si el monto no está especificado
-      } else {
-        extractedData.amount = parseFloat(amount); // Convierte el monto a número
-      }
+        // Validaciones y transformaciones
+        if (!amount || amount === "N/A") {
+          extractedData.amount = null; // Asigna null si el monto no está especificado
+        }
 
-      if (!telefono || telefono.includes("***") || !/^\d+$/.test(telefono)) {
-        extractedData.telefono = null; // Asigna null si el teléfono no es numérico o contiene caracteres inválidos
-      }
+        if (!telefono || telefono.includes("***")) {
+          extractedData.telefono = null; // Asigna null si el teléfono no es numérico
+        }
 
-      if (!nombre || !medio_pago || !numero_operacion) {
-        throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
-      }
+        if (!nombre || !medio_pago || !numero_operacion) {
+          throw new Error("Faltan campos obligatorios: nombre, medio_pago o numero_operacion.");
+        }
 
-      // Validar email
-      if (!email || email === "N/A") {
-        extractedData.email = null; // Asigna null si el email no está especificado
-      }
+        // Validar y transformar email
+        if (!email || email.toLowerCase() === "n/a") {
+          extractedData.email = null; // Asigna null si el email no está especificado
+        }
+
+        // Formatear fecha para Supabase
+        if (fecha) {
+          extractedData.fecha = fecha; // Utiliza el formato transformado
+        } else {
+          throw new Error("La fecha no se pudo extraer o transformar correctamente.");
+        }
+
 
         const { data, error } = await supabase
-        .from("acreditar")
+        .from('acreditar')
         .insert([
           {
             amount: extractedData.amount,
-            nombre,
+            nombre: extractedData.nombre,
             email: extractedData.email,
             telefono: extractedData.telefono,
-            medio_pago,
-            fecha: fecha || null,
-            numero_operacion
+            medio_pago: extractedData.medio_pago,
+            fecha: extractedData.fecha,
+            numero_operacion: extractedData.numero_operacion,
           }
         ]);
 
