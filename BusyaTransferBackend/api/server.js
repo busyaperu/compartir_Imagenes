@@ -42,8 +42,8 @@ app.post("/process-image", async (req, res) => {
     console.log("Texto extraído (sin procesar):", text);
 
     // Limpieza del texto extraído
-    const cleanedText = text.trim(); // Elimina espacios en blanco al inicio y final
-    console.log("Texto extraído (limpio):", cleanedText);
+    const cleanedText = text.replace(/p E/g, '').trim();  // Elimina caracteres no deseados
+    console.log("Texto extraído (limpio):", cleanedText);  // Muestra el texto limpio
     
 
     // Normalizar y dividir texto en líneas
@@ -87,10 +87,14 @@ app.post("/process-image", async (req, res) => {
       const regexMonto = /s\/\s*(\d+[\.,]?\d*)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
       
+      // Extraer monto si se encuentra
+      let amount = null;
       if (montoMatch) {
         amount = parseFloat(montoMatch[1].replace(',', '.')); // Convertir el monto a float
       }
     }
+
+    console.log("Monto extraído:", amount);  // Muestra el monto extraído
 
     // Si no se encontró monto, asignar null
     if (!amount || isNaN(amount)) {
