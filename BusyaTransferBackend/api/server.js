@@ -45,13 +45,16 @@ app.post("/process-image", async (req, res) => {
     const cleanedText = text.trim(); // Elimina espacios en blanco al inicio y final
     console.log("Texto extraído (limpio):", cleanedText);
     
+
     // Normalizar y dividir texto en líneas
     const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '');
-    
+
     // Buscar la línea después de "¡Yapeaste!"
     const yapeasteIndex = lines.findIndex(line => line.includes('¡Yapeaste!'));
+    let extractedData = {}; // Inicializar extractedData como un objeto vacío
     let amount = null;
-    
+
+    // Detectar monto basado en "¡Yapeaste!" y líneas posteriores
     if (yapeasteIndex !== -1 && yapeasteIndex + 1 < lines.length) {
       // Línea inmediatamente después de "¡Yapeaste!"
       const possibleAmountLine = lines[yapeasteIndex + 1];
@@ -60,30 +63,27 @@ app.post("/process-image", async (req, res) => {
         amount = parseFloat(numericMatch[0]); // Convertir el primer número encontrado a float
       }
     }
-    
-    // Si no se encontró monto, asignar null
+
+    // Si no se detecta monto basado en "¡Yapeaste!", buscar en el texto normalizado
     if (!amount) {
-      amount = null;
-    }
-    
-    console.log("Texto extraído (limpio):", cleanedText);
-
-    let extractedData = {}; // Inicializar extractedData como un objeto vacío
-
-    // Normalizar texto y extraer monto
-    const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
-    const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
-    const montoMatch = normalizedText.match(regexMonto);
-    if (montoMatch) {
-      extractedData.amount = parseFloat(montoMatch[1]); // Convierte el monto a un número
-    } else {
-      extractedData.amount = null; // Asignar null si no se encuentra el monto
+      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim();
+      const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
+      const montoMatch = normalizedText.match(regexMonto);
+      if (montoMatch) {
+        amount = parseFloat(montoMatch[1]); // Convierte el monto a un número
+      }
     }
 
-    // Validar el monto antes de la inserción
-    if (extractedData.amount === null || isNaN(extractedData.amount)) {
+    // Validar el monto antes de asignarlo
+    if (!amount || isNaN(amount)) {
       console.error("Error: Monto no detectado o inválido.");
+      extractedData.amount = null; // Asignar null si no se detectó un monto válido
+    } else {
+      extractedData.amount = amount;
     }
+
+    // Log del monto detectado
+    console.log("Monto extraído:", extractedData.amount);
 
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
