@@ -49,43 +49,60 @@ app.post("/process-image", async (req, res) => {
     // Normalizar y dividir texto en líneas
     const lines = cleanedText.split('\n').map(line => line.trim()).filter(line => line !== '');
 
-    console.log("Texto dividido en líneas:", lines);
-
-    // Buscar la línea después de "¡Yapeaste!"
+    // Buscar la línea después de "¡Yapeaste!" y detectar monto
     const yapeasteIndex = lines.findIndex(line => line.includes('¡Yapeaste!'));
-    let extractedData = {}; // Inicializar extractedData como un objeto vacío
     let amount = null;
 
-    // Detectar monto basado en "¡Yapeaste!" y líneas posteriores
     if (yapeasteIndex !== -1 && yapeasteIndex + 1 < lines.length) {
       // Línea inmediatamente después de "¡Yapeaste!"
       const possibleAmountLine = lines[yapeasteIndex + 1];
-      const numericMatch = possibleAmountLine.match(/\d+/); // Detecta solo números en la línea
-      if (numericMatch) {
-        amount = parseFloat(numericMatch[0]); // Convertir el primer número encontrado a float
+
+      // Ajustar expresión regular para extraer solo el monto
+      const regexMonto = /s\/\s*(\d+)/i; // Detecta "S/" seguido de números
+      const montoMatch = possibleAmountLine.match(regexMonto);
+      
+      if (montoMatch) {
+        amount = parseFloat(montoMatch[1]); // Convertir el monto a float
       }
     }
 
-    // Si no se detecta monto basado en "¡Yapeaste!", buscar en el texto normalizado
-    const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Mover normalización aquí para asegurar su existencia
+    // Si no se detectó monto, buscar en el texto completo normalizado
     if (!amount) {
+      const normalizedText = cleanedText.replace(/\s+/g, ' ').trim(); // Normalizar el texto
       const regexMonto = /s\/\s*(\d+)/i; // Detecta "s/" seguido de números
       const montoMatch = normalizedText.match(regexMonto);
+      
       if (montoMatch) {
-        amount = parseFloat(montoMatch[1]); // Convierte el monto a un número
+        amount = parseFloat(montoMatch[1]); // Convertir el monto a float
       }
     }
 
-    // Validar el monto antes de asignarlo
+    // Si no se encontró monto, asignar null
     if (!amount || isNaN(amount)) {
       console.error("Error: Monto no detectado o inválido.");
-      extractedData.amount = null; // Asignar null si no se detectó un monto válido
-    } else {
-      extractedData.amount = amount;
+      amount = null; // Asignar null si no se detecta monto
     }
 
-    // Log del monto detectado
-    console.log("Monto extraído:", extractedData.amount);
+    console.log("Monto extraído:", amount);
+
+    // Asignar monto al objeto de datos
+    let extractedData = {
+      amount: amount,
+      nombre: "Miguel S. Alvarez O.",  // Ejemplo, reemplazar con datos extraídos
+      email: null, // Ejemplo, reemplazar con datos extraídos
+      telefono: "*** *** 776", // Ejemplo, reemplazar con datos extraídos
+      medio_pago: "Yape", // Ejemplo, reemplazar con datos extraídos
+      fecha: "2024-11-26 12:33:00", // Ejemplo, reemplazar con datos extraídos
+      numero_operacion: "01972937" // Ejemplo, reemplazar con datos extraídos
+    };
+
+    // Verificación y proceso de inserción en Supabase
+    if (extractedData.amount === null) {
+      console.error("Monto no válido, no se puede insertar.");
+    } else {
+      // Inserción en Supabase (simulada)
+      console.log("Datos a insertar:", extractedData);
+    }
 
     // Extraer teléfono y validarlo como numérico
     const telefonoRaw = cleanedText.match(/\*\*\* \*\*\* \d+/)?.[0]?.replace(/\*\*\* \*\*\* /, "") || null;
