@@ -33,7 +33,7 @@ app.post("/process-image", async (req, res) => {
   }
 
   // Usando el texto limpio de OCR (este es el texto limpio)
-  const cleanedText = "¡Yapeaste! Jose J. Camus L. 30 nov. 2024 - 04:32 pm N9 de celular: *** *** 875 Destino: Yape NO de operación: 16941732 s/ 0.10"; 
+  const cleanedText = req.body.cleanedText; // Asegúrate de que este valor sea dinámico
 
   console.log("Texto extraído (limpio):", cleanedText);
 
@@ -84,6 +84,11 @@ app.post("/process-image", async (req, res) => {
     // Validar y transformar email
     if (!email || email.toLowerCase() === "n/a") {
       extractedData.email = null; // Asigna null si el email no está especificado
+    }
+
+    // Asegurándonos de que `fecha_constancia` sea una fecha válida
+    if (!fecha_constancia || fecha_constancia === "N/A") {
+      extractedData.fecha_constancia = null; // Asigna null si la fecha no está especificada
     }
 
     // Inserción en Supabase
