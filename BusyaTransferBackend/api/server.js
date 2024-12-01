@@ -3,19 +3,24 @@ const bodyParser = require("body-parser");
 const multer = require("multer");
 const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
-const Tesseract = require("tesseract.js");
-const sharp = require("sharp");
+const vision = require("@google-cloud/vision");
 
 const app = express();
 app.use(bodyParser.json());
 
+// Configuración de almacenamiento en memoria para imágenes
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// Inicialización de OpenAI y Supabase
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Configuración del cliente de Google Cloud Vision
+process.env.GOOGLE_APPLICATION_CREDENTIALS = "/app/credentials.json"; // Ruta para credenciales en Railway
+const client = new vision.ImageAnnotatorClient();
 
 const allowedApps = [
   "com.bcp.innovacxion.yapeapp",
@@ -37,18 +42,12 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
   }
 
   try {
-    // Preprocesar la imagen usando Sharp
-    const preprocessedImage = await sharp(req.file.buffer)
-      .resize(1000, null) // Escalar la imagen para texto más grande
-      .grayscale() // Convertir a escala de grises
-      .normalise() // Mejorar contraste
-      .threshold(128) // Convertir a blanco y negro
-      .toBuffer();
+    // Usar Google Cloud Vision para procesar la imagen
+    const [result] = await client.textDetection(req.file.buffer);
+    const detectedText = result.fullTextAnnotation?.text || "";
+    console.log("Texto extraído (OCR):", detectedText);
 
-    const ocrResult = await Tesseract.recognize(preprocessedImage, "spa");
-    const cleanedText = ocrResult.data.text.replace(/[^\w\s.:\/-]/g, "").trim();
-    console.log("Texto extraído (OCR):", cleanedText);
-
+    // Usar OpenAI GPT para procesar y extraer datos
     const prompt = `
       A continuación, recibirás información de una constancia de transferencia.
       Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
@@ -59,7 +58,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
       - "medio_pago" (puede aparecer como Destino).
       - "fecha_constancia" (puede aparecer como Fecha y hora).
       - "numero_operacion" (puede aparecer como Código de operación, N° de operacion).
-      Texto de la constancia: ${cleanedText}
+      Texto de la constancia: ${detectedText}
     `;
 
     const response = await openai.chat.completions.create({
@@ -73,7 +72,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     let extractedData = JSON.parse(rawContent);
 
     // Limpieza y validación del monto
-    const amountMatch = cleanedText.match(/(?:S\/)?\s?(\d+(\.\d{1,2})?)/);
+    const amountMatch = detectedText.match(/(?:S\/)?\s?(\d+(\.\d{1,2})?)/);
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
@@ -118,4 +117,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
-
