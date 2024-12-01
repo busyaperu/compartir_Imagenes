@@ -20,9 +20,15 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 const fs = require("fs");
 
-// Crear un archivo temporal para las credenciales
+// Crear archivo temporal para las credenciales
 const credentialsPath = "/tmp/credentials.json";
-fs.writeFileSync(credentialsPath, process.env.GOOGLE_APPLICATION_CREDENTIALS);
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  fs.writeFileSync(credentialsPath, process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+} else {
+  console.error("Error: La variable GOOGLE_APPLICATION_CREDENTIALS no está configurada.");
+  process.exit(1); // Finaliza el proceso si no está configurada
+}
 
 // Configuración del cliente de Google Cloud Vision
 process.env.GOOGLE_APPLICATION_CREDENTIALS = "/app/credentials.json"; // Ruta para credenciales en Railway
