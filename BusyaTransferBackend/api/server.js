@@ -13,9 +13,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Inicializar OpenAI
-const openai = new OpenAIApi(new Configuration({
+const { OpenAIApi, Configuration } = require("openai");
+
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY
-}));
+});
+const openai = new OpenAIApi(configuration);
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
