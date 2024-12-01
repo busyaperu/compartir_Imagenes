@@ -6,6 +6,29 @@ const { createClient } = require("@supabase/supabase-js");
 const Tesseract = require("tesseract.js");
 const sharp = require("sharp");
 
+// Inicialización de Express
+const app = express();
+app.use(bodyParser.json());
+
+// Configuración de almacenamiento en memoria para imágenes
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// Inicialización de OpenAI y Supabase
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
+});
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+const allowedApps = [
+  "com.bcp.innovacxion.yapeapp",
+  "com.bbva.pe.bbvacontigo",
+  "com.interbank.mobilebanking",
+  "pe.scotiabank.banking",
+  "pe.bn.movil",
+  "com.banbif.mobilebanking"
+];
+
 app.post("/process-image", upload.single("image"), async (req, res) => {
   const { app: clientApp } = req.body;
 
