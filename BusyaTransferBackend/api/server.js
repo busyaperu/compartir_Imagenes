@@ -6,17 +6,14 @@ const { createClient } = require("@supabase/supabase-js");
 const Tesseract = require("tesseract.js");
 const sharp = require("sharp");
 
-// Inicialización de Express
 const app = express();
 app.use(bodyParser.json());
 
-// Configuración de almacenamiento en memoria para imágenes
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Inicialización de OpenAI y Supabase
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
+  apiKey: process.env.OPENAI_API_KEY
 });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
@@ -42,17 +39,16 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
   try {
     // Preprocesar la imagen usando Sharp
     const preprocessedImage = await sharp(req.file.buffer)
+      .resize(1000, null) // Escalar la imagen para texto más grande
       .grayscale() // Convertir a escala de grises
-      .threshold(128) // Aplicar un umbral binario
-      .sharpen() // Enfocar la imagen para resaltar texto
+      .normalise() // Mejorar contraste
+      .threshold(128) // Convertir a blanco y negro
       .toBuffer();
 
-    // Procesar OCR directamente desde la imagen preprocesada
     const ocrResult = await Tesseract.recognize(preprocessedImage, "spa");
     const cleanedText = ocrResult.data.text.replace(/[^\w\s.:\/-]/g, "").trim();
     console.log("Texto extraído (OCR):", cleanedText);
 
-    // Usar OpenAI GPT para procesar y extraer datos
     const prompt = `
       A continuación, recibirás información de una constancia de transferencia.
       Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
@@ -76,28 +72,26 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
 
     let extractedData = JSON.parse(rawContent);
 
-    // Extraer el monto del texto OCR si falta en OpenAI
+    // Limpieza y validación del monto
     const amountMatch = cleanedText.match(/(?:S\/)?\s?(\d+(\.\d{1,2})?)/);
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
         : amountMatch ? parseFloat(amountMatch[1]).toFixed(2) : null;
 
-    // Validar y formatear otros datos
-    extractedData.telefono = extractedData.telefono?.includes("***")
-      ? null
-      : extractedData.telefono;
-    extractedData.email =
-      extractedData.email && extractedData.email.toLowerCase() !== "n/a"
-        ? extractedData.email
-        : null;
+    // Limpieza del teléfono
+    extractedData.telefono = extractedData.telefono?.match(/\d{9}/)?.[0] || null;
 
-    // Verificar campos obligatorios
+    // Validar datos obligatorios
+    if (!extractedData.amount || isNaN(extractedData.amount)) {
+      console.error("Error: Monto inválido o no encontrado:", extractedData.amount);
+      return res.status(400).json({ error: "Monto inválido o no encontrado." });
+    }
+
     if (!extractedData.nombre || !extractedData.medio_pago || !extractedData.numero_operacion) {
       throw new Error("Faltan campos obligatorios.");
     }
 
-    // Inserción en Supabase
     const { data, error } = await supabase.from("acreditar").insert([{
       amount: extractedData.amount,
       nombre: extractedData.nombre,
@@ -124,3 +118,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);
 });
+
