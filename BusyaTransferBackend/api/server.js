@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { OpenAIApi, Configuration } = require("openai");
+const { OpenAIApi } = require("openai");
 const Tesseract = require("tesseract.js");
 
 const app = express();
@@ -10,9 +10,9 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Configuración de la API de OpenAI
-const openai = new OpenAIApi(new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-}));
+const openai = new OpenAIApi({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 const allowedApps = [
   "com.bcp.innovacxion.yapeapp",
