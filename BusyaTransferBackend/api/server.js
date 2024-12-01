@@ -69,10 +69,12 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     let extractedData = JSON.parse(rawContent);
 
     // Extraer el monto del texto OCR si falta en OpenAI
+    const amountMatch = cleanedText.match(/(?:S\/\.?\s?)?(\d+(\.\d{1,2})?)/);
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
-        : cleanedText.match(/S\/\.?\s?(\d+(\.\d{1,2})?)/)?.[1] || null;
+        : amountMatch ? amountMatch[1] : null;
+      
 
     // Validar y formatear otros datos
     extractedData.telefono = extractedData.telefono?.includes("***")
