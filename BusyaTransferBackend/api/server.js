@@ -4,6 +4,7 @@ const multer = require("multer");
 const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
 const Tesseract = require("tesseract.js");
+const sharp = require("sharp"); // Biblioteca para preprocesar imágenes
 
 // Inicialización de Express
 const app = express();
@@ -39,8 +40,14 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
   }
 
   try {
-    // Procesar OCR directamente desde la imagen en memoria
-    const ocrResult = await Tesseract.recognize(req.file.buffer, "spa");
+    // Preprocesar la imagen usando Sharp
+    const preprocessedImage = await sharp(req.file.buffer)
+      .grayscale() // Convertir a escala de grises
+      .threshold(150) // Aplicar un umbral para eliminar ruido
+      .toBuffer();
+
+    // Procesar OCR directamente desde la imagen preprocesada
+    const ocrResult = await Tesseract.recognize(preprocessedImage, "spa");
     const cleanedText = ocrResult.data.text.trim();
     console.log("Texto extraído (OCR):", cleanedText);
 
@@ -73,8 +80,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
-        : amountMatch ? amountMatch[1] : null;
-      
+        : amountMatch ? parseFloat(amountMatch[1]).toFixed(2) : null;
 
     // Validar y formatear otros datos
     extractedData.telefono = extractedData.telefono?.includes("***")
