@@ -18,6 +18,12 @@ const openai = new OpenAI({
 });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+const fs = require("fs");
+
+// Crear un archivo temporal para las credenciales
+const credentialsPath = "/tmp/credentials.json";
+fs.writeFileSync(credentialsPath, process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
 // Configuración del cliente de Google Cloud Vision
 process.env.GOOGLE_APPLICATION_CREDENTIALS = "/app/credentials.json"; // Ruta para credenciales en Railway
 const client = new vision.ImageAnnotatorClient();
