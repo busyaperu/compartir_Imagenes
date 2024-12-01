@@ -41,7 +41,6 @@ app.post("/process-image", async (req, res) => {
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
     Extrae y estructura los datos de la siguiente constancia de transferencia en formato JSON. Los campos requeridos son:
-    - "amount": El monto transferido, representado por un número grande justo debajo del texto "¡Yapeaste!".
     - "nombre": El nombre del receptor de la transferencia, aparece justo debajo del monto.
     - "email": El correo electrónico del receptor, si está disponible.
     - "telefono": El número de teléfono del receptor, si está disponible.
