@@ -48,7 +48,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
 
     // Procesar OCR directamente desde la imagen preprocesada
     const ocrResult = await Tesseract.recognize(preprocessedImage, "spa");
-    const cleanedText = ocrResult.data.text.trim();
+    const cleanedText = ocrResult.data.text.replace(/[^\w\s.:\/-]/g, "").trim();
     console.log("Texto extraído (OCR):", cleanedText);
 
     // Usar OpenAI GPT para procesar y extraer datos
@@ -76,7 +76,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     let extractedData = JSON.parse(rawContent);
 
     // Extraer el monto del texto OCR si falta en OpenAI
-    const amountMatch = cleanedText.match(/(?:S\/\.?\s?)?(\d+(\.\d{1,2})?)/);
+    const amountMatch = cleanedText.match(/(\d+(\.\d{1,2})?)/); // Buscar cualquier número
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
