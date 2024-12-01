@@ -4,30 +4,7 @@ const multer = require("multer");
 const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
 const Tesseract = require("tesseract.js");
-const sharp = require("sharp"); // Biblioteca para preprocesar imágenes
-
-// Inicialización de Express
-const app = express();
-app.use(bodyParser.json());
-
-// Configuración de almacenamiento en memoria para imágenes
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// Inicialización de OpenAI y Supabase
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
-});
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-
-const allowedApps = [
-  "com.bcp.innovacxion.yapeapp",
-  "com.bbva.pe.bbvacontigo",
-  "com.interbank.mobilebanking",
-  "pe.scotiabank.banking",
-  "pe.bn.movil",
-  "com.banbif.mobilebanking"
-];
+const sharp = require("sharp");
 
 app.post("/process-image", upload.single("image"), async (req, res) => {
   const { app: clientApp } = req.body;
@@ -43,7 +20,8 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     // Preprocesar la imagen usando Sharp
     const preprocessedImage = await sharp(req.file.buffer)
       .grayscale() // Convertir a escala de grises
-      .threshold(150) // Aplicar un umbral para eliminar ruido
+      .threshold(128) // Aplicar un umbral binario
+      .sharpen() // Enfocar la imagen para resaltar texto
       .toBuffer();
 
     // Procesar OCR directamente desde la imagen preprocesada
@@ -76,7 +54,7 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     let extractedData = JSON.parse(rawContent);
 
     // Extraer el monto del texto OCR si falta en OpenAI
-    const amountMatch = cleanedText.match(/(\d+(\.\d{1,2})?)/); // Buscar cualquier número
+    const amountMatch = cleanedText.match(/(?:S\/)?\s?(\d+(\.\d{1,2})?)/);
     extractedData.amount =
       extractedData.amount && extractedData.amount !== "No especificado"
         ? parseFloat(extractedData.amount).toFixed(2)
