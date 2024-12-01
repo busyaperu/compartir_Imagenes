@@ -42,9 +42,6 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     // Procesar OCR directamente desde la imagen en memoria
     const ocrResult = await Tesseract.recognize(req.file.buffer, "spa");
     const cleanedText = ocrResult.data.text.trim();
-    let extractedData = JSON.parse(rawContent);
-    extractedData.amount = cleanedText.match(/S\/\.?\s?(\d+(\.\d{1,2})?)/)?.[1] || "No especificado";
-    
     console.log("Texto extraído (OCR):", cleanedText);
 
     // Usar OpenAI GPT para procesar y extraer datos
@@ -69,12 +66,15 @@ app.post("/process-image", upload.single("image"), async (req, res) => {
     const rawContent = response.choices[0].message.content.trim();
     console.log("Respuesta de OpenAI:", rawContent);
 
-    
+    let extractedData = JSON.parse(rawContent);
 
-    // Validar y formatear datos
-    extractedData.amount = extractedData.amount
-      ? parseFloat(extractedData.amount).toFixed(2)
-      : null;
+    // Extraer el monto del texto OCR si falta en OpenAI
+    extractedData.amount =
+      extractedData.amount && extractedData.amount !== "No especificado"
+        ? parseFloat(extractedData.amount).toFixed(2)
+        : cleanedText.match(/S\/\.?\s?(\d+(\.\d{1,2})?)/)?.[1] || null;
+
+    // Validar y formatear otros datos
     extractedData.telefono = extractedData.telefono?.includes("***")
       ? null
       : extractedData.telefono;
