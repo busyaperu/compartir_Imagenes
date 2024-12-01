@@ -43,9 +43,9 @@ app.post("/process-image", upload.single('image'), async (req, res) => {
 
     // Usar OpenAI para estructurar los datos extraídos
     const prompt = `
-      A continuación, recibirás información de una constancia de transferencia.
+      A continuación, recibirás información de una constancia de transferencia de la aplicación Yape.
       Extrae y estructura los datos en un formato JSON con las siguientes claves estándar:
-      - "amount" (puede aparecer como Pago exitoso, Te Yapearon).
+      - "amount" (indicado solo con un número que representa el monto transferido, aparece debajo del texto "¡Yapeaste!").
       - "nombre" (puede aparecer como nombre, Enviado a).
       - "email" (puede aparecer como correo, email).
       - "telefono" (puede aparecer como teléfono, celular).
