@@ -1,18 +1,21 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const { OpenAI } = require("openai");
 const { createClient } = require("@supabase/supabase-js");
-const axios = require("axios");  // Cambié a axios para obtener la imagen
+const axios = require("axios");
+const vision = require('@google-cloud/vision');
+const fs = require('fs');
 
 // Inicialización de Express
 const app = express();
 app.use(bodyParser.json());
 
-// Inicialización de OpenAI y Supabase
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY // Usa tu clave de OpenAI desde las variables de entorno
-});
+// Inicialización de Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Configuración del cliente de Google Vision API
+const client = new vision.ImageAnnotatorClient({
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS // Asegúrate de haber subido las credenciales de Google Cloud
+});
 
 app.post("/process-image", async (req, res) => {
   const { imageUrl, app: clientApp } = req.body;
@@ -31,46 +34,25 @@ app.post("/process-image", async (req, res) => {
     // Usar axios para obtener la imagen
     const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-
-    // Construir el prompt específico para OpenAI
-    const prompt = `
-    A continuación, recibirás una imagen con información de una transferencia de dinero. Por favor, extrae y estructura los datos en formato JSON con las siguientes claves:
-
-    - "amount": El monto de la transferencia (por ejemplo: "S/. 150.00").
-    - "nombre": El nombre de la persona a quien se realizó la transferencia.
-    - "email": El correo electrónico del destinatario (si está disponible).
-    - "telefono": El número de teléfono del destinatario (si está disponible).
-    - "medio_pago": El medio de pago utilizado (por ejemplo: "Yape", "Plin").
-    - "fecha_constancia": La fecha de la transferencia (por ejemplo: "2024-10-01").
-    - "numero_operacion": El código o número de operación de la transacción (por ejemplo: "123456").
-
-    La imagen es la siguiente: ${imageUrl}
-    `;
-
-    // Usar la API de OpenAI para procesar la imagen con el prompt específico
-    const openAIResponse = await openai.images.create({
-      prompt: prompt,  // El prompt detallado para la extracción
-      image: imageBuffer,  // La imagen en formato buffer
-    });
-
-    // Obtener el texto extraído
-    const extractedText = openAIResponse.data[0].text; // Asumiendo que OpenAI devuelve el texto procesado
-
-    if (!extractedText || extractedText === 'undefined') {
-      return res.status(400).json({ error: "Texto extraído vacío o no válido." });
+    
+    // Procesar la imagen con Google Vision API
+    const [result] = await client.textDetection(imageBuffer);
+    const text = result.fullTextAnnotation ? result.fullTextAnnotation.text : '';
+    
+    if (!text) {
+      return res.status(400).json({ error: "Texto no encontrado en la imagen." });
     }
 
-    console.log("Texto extraído:", extractedText);
+    console.log("Texto extraído:", text);
 
     // Procesar los datos extraídos (ejemplo con expresiones regulares)
     const extractedData = {
-      amount: extractedText.match(/S\/\.\s(\d+\.\d{2})/) ? extractedText.match(/S\/\.\s(\d+\.\d{2})/)[1] : null,
-      nombre: extractedText.match(/Nombre:\s([a-zA-Z\s]+)/) ? extractedText.match(/Nombre:\s([a-zA-Z\s]+)/)[1] : null,
-      email: extractedText.match(/Email:\s([\w.-]+@[\w.-]+)/) ? extractedText.match(/Email:\s([\w.-]+@[\w.-]+)/)[1] : null,
-      telefono: extractedText.match(/Telefono:\s(\d{9})/) ? extractedText.match(/Telefono:\s(\d{9})/)[1] : null,
-      medio_pago: extractedText.match(/Medio de pago:\s([a-zA-Z\s]+)/) ? extractedText.match(/Medio de pago:\s([a-zA-Z\s]+)/)[1] : null,
-      fecha_constancia: extractedText.match(/Fecha:\s([0-9]{4}-[0-9]{2}-[0-9]{2})/) ? extractedText.match(/Fecha:\s([0-9]{4}-[0-9]{2}-[0-9]{2})/)[1] : null,
-      numero_operacion: extractedText.match(/N°\sde\soperación:\s(\d+)/) ? extractedText.match(/N°\sde\soperación:\s(\d+)/)[1] : null
+      amount: text.match(/S\/\.\s(\d+\.\d{2})/) ? text.match(/S\/\.\s(\d+\.\d{2})/)[1] : null,
+      nombre: text.match(/Enviado a:\s([a-zA-Z\s]+)/) ? text.match(/Enviado a:\s([a-zA-Z\s]+)/)[1] : null,
+      telefono: text.match(/(\d{9})/) ? text.match(/(\d{9})/)[1] : null,
+      medio_pago: text.match(/Destino:\s([a-zA-Z\s]+)/) ? text.match(/Destino:\s([a-zA-Z\s]+)/)[1] : null,
+      fecha_constancia: text.match(/(\d{2}\s[a-zA-Z]+\s\d{4})/) ? text.match(/(\d{2}\s[a-zA-Z]+\s\d{4})/)[1] : null,
+      numero_operacion: text.match(/Código de operación:\s(\d+)/) ? text.match(/Código de operación:\s(\d+)/)[1] : null
     };
 
     // Insertar en Supabase
