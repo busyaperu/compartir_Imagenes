@@ -1,10 +1,13 @@
 const express = require("express");
-const bodyParser = require("body-parser");
+const multer = require("multer"); // Usaremos multer para manejar form data
 const { OpenAI } = require("openai");
 const Tesseract = require("tesseract.js");
 
 const app = express();
-app.use(bodyParser.json());
+
+// Configuración de multer para manejar archivos entrantes
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno
@@ -19,19 +22,20 @@ const allowedApps = [
   "com.banbif.mobilebanking"
 ];
 
-app.post("/process-image", async (req, res) => {
-  const { imageUrl, app } = req.body;
+app.post("/process-image", upload.single('image'), async (req, res) => {
+  const { app } = req.body;
+  const imageFile = req.file;
 
-  if (!imageUrl) {
-    return res.status(400).json({ error: "La URL de la imagen es obligatoria." });
+  if (!imageFile) {
+    return res.status(400).json({ error: "La imagen es obligatoria." });
   }
   if (!allowedApps.includes(app)) {
     return res.status(400).json({ error: "Aplicación no permitida." });
   }
 
-  // Utilizando Tesseract para realizar OCR sobre la imagen
+  // Utilizando Tesseract para realizar OCR sobre la imagen en memoria
   Tesseract.recognize(
-    imageUrl,
+    imageFile.buffer,
     'spa', // Asumiendo español, ajusta según necesidad
     { logger: m => console.log(m) }
   ).then(async ({ data: { text } }) => {
